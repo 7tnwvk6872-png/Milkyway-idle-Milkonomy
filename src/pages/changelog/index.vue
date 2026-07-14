@@ -34,10 +34,6 @@ const entries: ChangelogEntry[] = [{
       {
         zh: "左侧菜单重排：强化计算移至打野工具上方，常用功能更顺手。",
         en: "Menu Reorder: Enchant Calculator moved above Jungle Tools for quicker access."
-      },
-      {
-        zh: "打赏页面更新：原作者补充 hyhfish，维护者 Polokiki 支持支付宝打赏，三人独立打赏码。",
-        en: "Sponsor Page Update: Added hyhfish (original author), Polokiki now supports Alipay. Three independent sponsor QR codes."
       }
     ]
   }]
