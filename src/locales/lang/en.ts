@@ -367,15 +367,11 @@ export default {
   "秒": "s",
 
   // 打野工具 / 精确等级 / 逐级制作（补充翻译）
-  "打野爽！": "Jungle Time!",
   "继承爽！": "Inherit Time!",
   "分解爽！": "Decompose Time!",
-  "打野工具": "Jungle Tools",
-  "超级打野工具": "Super Jungle Tools",
   "精确等级": "Exact Levels",
   "等级段": "Level Range",
   "等级": "Level",
-  "目标等级从": "Target Level From",
   "初始等级从": "Start Level From",
   "起始材质": "Start Material",
   "制作到": "Craft To",
@@ -391,7 +387,6 @@ export default {
   "需求数量": "Required Qty",
   "选择装备": "Select Equipment",
   "请先选择装备": "Please select equipment first",
-  "风险系数": "Risk Factor",
   "逃逸率": "Escape Rate",
   "祝福率": "Blessing Rate",
   "保护消耗": "Protection Used",
