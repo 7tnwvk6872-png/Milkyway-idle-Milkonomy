@@ -26,6 +26,15 @@ const layoutClasses = computed(() => {
 function handleClickOutside() {
   appStore.closeSidebar(false)
 }
+
+// 手机端侧边栏打开时锁 body 滚动
+watch([() => appStore.sidebar.opened, isMobile], ([opened, mobile]) => {
+  if (mobile && opened) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+}, { immediate: true })
 </script>
 
 <template>

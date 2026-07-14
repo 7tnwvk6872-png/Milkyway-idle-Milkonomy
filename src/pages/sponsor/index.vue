@@ -50,7 +50,7 @@ const paymentCards = [
     owner: "hyhfish",
     ownerClass: "maintainer",
     title: "微信",
-    note: "请 hyhfish 喝杯奶茶",
+    note: "请 luyh7、hyhfish、Polokiki 喝杯奶茶",
     imageUrl: logoHyhfishWechat
   },
   {
@@ -166,13 +166,13 @@ loadData()
         如果你觉得 Milkonomy 对你有帮助，可以通过下方方式支持后续维护。
       </p>
       <p class="meta-line">
-        原作者：<span class="author">luyh7</span>
+        原作者：<span class="author">luyh7</span>、<span class="author">hyhfish</span>
       </p>
       <p class="meta-line">
-        当前维护者：<span class="maintainer">hyhfish</span> / QQ：<span class="maintainer">2978142395</span>
+        当前维护者：<span class="maintainer">Polokiki</span> / QQ：<span class="maintainer">1508828092</span>
       </p>
       <p class="meta-line">
-        请 <span class="maintainer">hyhfish</span> 喝杯奶茶
+        请 <span class="maintainer">luyh7、hyhfish、Polokiki</span> 喝杯奶茶
       </p>
     </div>
 

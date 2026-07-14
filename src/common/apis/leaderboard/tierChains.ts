@@ -26,13 +26,13 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
       key: "cheese",
       label: "奶酪",
       tiers: [
-        { itemLevel: 1, label: "普通" },
-        { itemLevel: 10, label: "绿" },
-        { itemLevel: 20, label: "蓝" },
-        { itemLevel: 35, label: "紫" },
-        { itemLevel: 50, label: "红" },
-        { itemLevel: 65, label: "彩虹" },
-        { itemLevel: 80, label: "神圣" },
+        { itemLevel: 1, label: "奶酪" },
+        { itemLevel: 10, label: "翠绿奶酪" },
+        { itemLevel: 20, label: "蔚蓝奶酪" },
+        { itemLevel: 35, label: "深紫奶酪" },
+        { itemLevel: 50, label: "绛红奶酪" },
+        { itemLevel: 65, label: "彩虹奶酪" },
+        { itemLevel: 80, label: "神圣奶酪" },
         { itemLevel: 85, label: "Lv85" },
         { itemLevel: 90, label: "Lv90" },
         { itemLevel: 95, label: "Lv95" }
@@ -90,6 +90,15 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
 // 动作名归一化：英文/繁体动作名统一映射回简体中文 key，
 // 保证中英文界面下逐级制作过滤器都能正确匹配 TIER_CHAINS。
 const PROJECT_ALIAS: Record<string, string> = {
+  // 挤奶
+  "挤奶": "挤奶",
+  "Milking": "挤奶",
+  // 采摘
+  "采摘": "采摘",
+  "Foraging": "采摘",
+  // 伐木
+  "伐木": "伐木",
+  "Woodcutting": "伐木",
   // 锻造
   "锻造": "锻造",
   "Smithing": "锻造",
@@ -100,7 +109,22 @@ const PROJECT_ALIAS: Record<string, string> = {
   // 裁缝 / 缝纫
   "裁缝": "裁缝",
   "缝纫": "裁缝",
-  "Tailoring": "裁缝"
+  "Tailoring": "裁缝",
+  // 烹饪
+  "烹饪": "烹饪",
+  "Cooking": "烹饪",
+  // 冲泡
+  "冲泡": "冲泡",
+  "Brewing": "冲泡",
+  // 点金
+  "点金": "点金",
+  "Coinify": "点金",
+  // 分解
+  "分解": "分解",
+  "Decompose": "分解",
+  // 转化
+  "转化": "转化",
+  "Transmute": "转化"
 }
 
 export function normalizeProject(project: string): string {

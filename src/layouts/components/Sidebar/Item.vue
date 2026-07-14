@@ -2,8 +2,11 @@
 import type { RouteRecordRaw } from "vue-router"
 import { isExternal } from "@@/utils/validate"
 import path from "path-browserify"
+import { useDevice } from "@@/composables/useDevice"
 import ItemIcon from "@/common/components/ItemIcon/index.vue"
 import Link from "./Link.vue"
+
+const { isMobile } = useDevice()
 
 interface Props {
   item: RouteRecordRaw
@@ -62,7 +65,7 @@ function resolvePath(routePath: string) {
       </el-menu-item>
     </Link>
   </template>
-  <el-sub-menu v-else :index="resolvePath(props.item.path)" teleported>
+  <el-sub-menu v-else :index="resolvePath(props.item.path)" :teleported="!isMobile">
     <template #title>
       <SvgIcon v-if="props.item.meta?.svgIcon" :name="props.item.meta.svgIcon" class="svg-icon" />
       <ItemIcon v-else-if="props.item.meta?.itemIconHrid" :hrid="props.item.meta.itemIconHrid" :width="18" :height="18" class="item-icon" />

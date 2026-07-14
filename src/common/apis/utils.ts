@@ -1,6 +1,7 @@
 import type Calculator from "@/calculator"
 import { getEquipmentTypeOf } from "../utils/game"
 import { getPriceOf } from "./game"
+import { normalizeProject } from "./leaderboard/tierChains"
 
 export function handleSort(profitList: Calculator[], params: any) {
   // 首先进行一次利润排序
@@ -57,7 +58,10 @@ export function handleSearch(profitList: Calculator[], params: any) {
   })
   )
 
-  params.project && (profitList = profitList.filter(cal => cal.project.match(params.project!)))
+  if (params.project) {
+    const target = normalizeProject(params.project)
+    profitList = profitList.filter(cal => normalizeProject(cal.project).includes(target) || cal.project.includes(params.project!))
+  }
   params.banEquipment && (profitList = profitList.filter(cal => !cal.isEquipment))
   params.banJewelry && (profitList = profitList.filter(cal =>
     getEquipmentTypeOf(cal.item) !== "neck" && getEquipmentTypeOf(cal.item) !== "ring" && getEquipmentTypeOf(cal.item) !== "earrings"))

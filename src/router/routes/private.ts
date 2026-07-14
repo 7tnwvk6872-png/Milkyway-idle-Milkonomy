@@ -30,67 +30,6 @@ export const privateRoutes: RouteRecordRaw[] = [
   {
     path: "/",
     component: Layouts,
-    redirect: "/jungle",
-    meta: {
-      title: t("打野工具"),
-      elIcon: "Compass"
-    },
-    children: [
-      {
-        path: "jungle",
-        component: () => import("@/pages/jungle/index.vue"),
-        name: "Jungle",
-        meta: {
-          title: t("打野工具"),
-          affix: false,
-          elIcon: "Compass"
-        }
-      },
-      {
-        path: "junglerit",
-        component: () => import("@/pages/junglest/inherit.vue"),
-        name: "junglerit",
-        meta: {
-          title: t("继承打野工具"),
-          affix: false,
-          elIcon: "Compass"
-        }
-      },
-      {
-        path: "inherit",
-        component: () => import("@/pages/inherit/index.vue"),
-        name: "inherit",
-        meta: {
-          title: t("继承"),
-          affix: false,
-          elIcon: "Compass"
-        }
-      },
-      {
-        path: "decompose",
-        component: () => import("@/pages/decompose/index.vue"),
-        name: "decompose",
-        meta: {
-          title: t("分解"),
-          affix: false,
-          elIcon: "Compass"
-        }
-      },
-      {
-        path: "pickout",
-        component: () => import("@/pages/jungle/pickout.vue"),
-        name: "Pickout",
-        meta: {
-          title: t("捡漏工具"),
-          affix: false,
-          elIcon: "Compass"
-        }
-      }
-    ]
-  },
-  {
-    path: "/",
-    component: Layouts,
     redirect: "/manualchemy",
     children: [
       {
@@ -194,6 +133,90 @@ export const privateRoutes: RouteRecordRaw[] = [
             }
           }
         ]
+      }
+    ]
+  },
+  {
+    path: "/",
+    component: Layouts,
+    redirect: "/sponsor",
+    children: [
+      {
+        path: "sponsor",
+        component: () => import("@/pages/sponsor/index.vue"),
+        name: "Sponsor",
+        meta: {
+          title: t("打赏"),
+          elIcon: "Coin",
+          affix: true
+        }
+      }
+    ]
+  },
+  {
+    path: "/link",
+    meta: {
+      title: t("相关链接"),
+      elIcon: "Link"
+    },
+    children: [
+      {
+        path: "https://github.com/luyh7/milkonomy",
+        component: () => {},
+        name: "Link0",
+        meta: {
+          title: "Milkonomy Source Code"
+        }
+      },
+      {
+        path: "https://www.milkywayidle.com/",
+        component: () => {},
+        name: "Link1",
+        meta: {
+          title: "Milky Way Idle"
+        }
+      },
+      {
+        path: "https://test-ctmd6jnzo6t9.feishu.cn/docx/KG9ddER6Eo2uPoxJFkicsvbEnCe",
+        component: () => {},
+        name: "Link2",
+        meta: {
+          title: "牛牛手册(攻略/插件)"
+        }
+      },
+      {
+        path: "https://github.com/holychikenz/MWIApi",
+        component: () => {},
+        name: "Link3",
+        meta: {
+          title: "MWI Api"
+        }
+      },
+      {
+        path: "https://docs.google.com/spreadsheets/d/13yBy3oQkH5N4y7UJ0Pkux2A8O5xM1ZsVTNAg6qgLEcM/edit?gid=2017655058#gid=2017655058",
+        component: () => {},
+        name: "Link4",
+        meta: {
+          title: "MWI Data"
+        }
+      }
+
+    ]
+  },
+  {
+    path: "/",
+    component: Layouts,
+    redirect: "/changelog",
+    children: [
+      {
+        path: "changelog",
+        component: () => import("@/pages/changelog/index.vue"),
+        name: "Changelog",
+        meta: {
+          title: t("更新日志"),
+          elIcon: "Document",
+          affix: false
+        }
       }
     ]
   }

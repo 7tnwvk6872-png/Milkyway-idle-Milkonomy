@@ -12,6 +12,9 @@ import { getTrans } from "@/locales"
 import { ACHIEVEMENT_TIER_LIST, ACTION_LIST } from "@/pinia/stores/game"
 import { defaultActionConfig, usePlayerStore } from "@/pinia/stores/player"
 
+const emit = defineEmits<{
+  compare: [index: number]
+}>()
 defineProps<{
   actions?: Action[]
   equipments?: Equipment[]
@@ -102,11 +105,11 @@ function onDialog(config: ActionConfig, index: number) {
 }
 
 function onSelect(config: ActionConfig, index: number) {
-  // 如果选择的是用户当前config，则弹窗修改，否则切换到所选config
+  // 如果选择的是用户当前config，则弹窗修改，否则触发对比
   if (index === playerStore.presetIndex) {
     onDialog(config, index)
   } else {
-    playerStore.switchTo(index)
+    emit("compare", index)
   }
 }
 
@@ -145,15 +148,61 @@ function constructActionConfig() {
   return config
 }
 
-function onConfirm() {
+// 标记：关闭弹窗时是否跳过“点外部自动保存”逻辑
+const skipAutoSave = ref(false)
+
+function doSave(): boolean {
   try {
     const config = constructActionConfig()
     setActionConfigApi(config, currentIndex.value)
-
-    visible.value = false
+    return true
   } catch (e: any) {
     ElMessage.error(e.message)
+    return false
   }
+}
+
+function onConfirm() {
+  if (doSave()) {
+    skipAutoSave.value = true
+    visible.value = false
+  }
+}
+
+// 点击弹窗外部遮罩 / ESC 关闭时：自动保存
+function onDialogClose() {
+  if (skipAutoSave.value) {
+    // 由保存/删除按钮触发的关闭，不重复保存
+    skipAutoSave.value = false
+    return
+  }
+  // 点外部关闭 = 保存
+  doSave()
+}
+
+// 弹窗内删除当前预设
+function onDeleteInDialog() {
+  // 新增中的预设（尚未保存，不在列表里）直接关闭
+  if (currentIndex.value >= playerStore.presets.length) {
+    skipAutoSave.value = true
+    visible.value = false
+    return
+  }
+  if (playerStore.presets.length <= 1) {
+    ElMessage.warning(t("至少保留一个预设"))
+    return
+  }
+  ElMessageBox.confirm(t("确定删除该预设吗？"), "", {
+    confirmButtonText: t("确定"),
+    cancelButtonText: t("取消"),
+    type: "warning"
+  }).then(() => {
+    playerStore.removePreset(currentIndex.value)
+    skipAutoSave.value = true
+    visible.value = false
+  }).catch(() => {
+    // 取消删除
+  })
 }
 
 const menuVisible = ref(false)
@@ -428,7 +477,7 @@ function getAchievementEffect(type: AchievementTier) {
       </div>
     </template>
   </div>
-  <el-dialog v-model="visible" :show-close="false" width="80%">
+  <el-dialog v-model="visible" :show-close="false" width="80%" @close="onDialogClose">
     <el-row :gutter="20" class="mt-[-30px]">
       <el-col :xs="24" :sm="24" :md="24" :lg="24" :xl="16">
         <el-card class="mt-5">
@@ -677,6 +726,9 @@ function getAchievementEffect(type: AchievementTier) {
 
     <template #footer>
       <div style="text-align: center;">
+        <el-button type="danger" plain @click="onDeleteInDialog">
+          {{ t('删除') }}
+        </el-button>
         <el-button type="primary" @click="onConfirm">
           {{ t('保存') }}
         </el-button>

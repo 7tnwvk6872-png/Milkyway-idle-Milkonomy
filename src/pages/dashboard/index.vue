@@ -29,7 +29,59 @@ import PriceStatusSelect from "./components/PriceStatusSelect.vue"
 // #region 查
 const favoriteStore = useFavoriteStore()
 const { paginationData: paginationDataLD, handleCurrentChange: handleCurrentChangeLD, handleSizeChange: handleSizeChangeLD } = usePagination({}, "dashboard-leaderboard-pagination")
+
 const leaderboardData = ref<Calculator[]>([])
+
+// 预设对比
+const isComparing = ref(false)
+const compareDataB = ref<Record<string, Calculator>>({})
+const compareNameA = ref('')
+const compareNameB = ref('')
+const compareIdxA = ref(0)
+let _comparePhase = 0
+
+function handleCompare(presetBIndex: number) {
+  const ps = usePlayerStore()
+  compareIdxA.value = ps.presetIndex
+  compareNameA.value = ps.presets[ps.presetIndex].name || '预设A'
+  compareNameB.value = ps.presets[presetBIndex].name || '预设B'
+  _comparePhase = 1
+  ps.switchTo(presetBIndex)
+}
+
+function exitCompare() {
+  isComparing.value = false
+  compareDataB.value = {}
+  // 如果正在恢复中，强制切回 A
+  if (_comparePhase === 2) {
+    usePlayerStore().switchTo(compareIdxA.value)
+    _comparePhase = 0
+  }
+}
+
+const displayLeaderboardData = computed(() => {
+  if (!isComparing.value) return leaderboardData.value
+  return leaderboardData.value.map(row => {
+    const b = compareDataB.value[row.key]
+    if (!b) return row
+    return { ...row, _dataB: b }
+  })
+})
+
+// 监听 leaderboardData 捕获 B 的计算结果
+watch(leaderboardData, (newVal) => {
+  if (_comparePhase === 1) {
+    const map: Record<string, Calculator> = {}
+    for (const item of newVal) map[item.key] = item
+    compareDataB.value = map
+    _comparePhase = 2
+    usePlayerStore().switchTo(compareIdxA.value)
+  } else if (_comparePhase === 2) {
+    isComparing.value = true
+    _comparePhase = 0
+  }
+})
+
 const ldSearchFormRef = ref<FormInstance | null>(null)
 
 const ldSearchData = useMemory("dashboard-leaderboard-search-data", {
@@ -239,7 +291,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
     <div class="game-info">
       <GameInfo />
       <div>
-        <ActionConfig />
+        <ActionConfig @compare="handleCompare" />
       </div>
 
       <PriceStatusSelect
@@ -272,17 +324,17 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               </el-form-item>
               <el-form-item prop="phone" :label="t('动作')">
                 <el-select v-model="ldSearchData.project" :placeholder="t('请选择')" style="width:100px" clearable @change="handleProjectChange">
-                  <el-option :label="t('挤奶')" :value="t('挤奶')" />
-                  <el-option :label="t('采摘')" :value="t('采摘')" />
-                  <el-option :label="t('伐木')" :value="t('伐木')" />
-                  <el-option :label="t('锻造')" :value="t('锻造')" />
-                  <el-option :label="t('制造')" :value="t('制造')" />
-                  <el-option :label="t('裁缝')" :value="t('裁缝')" />
-                  <el-option :label="t('烹饪')" :value="t('烹饪')" />
-                  <el-option :label="t('冲泡')" :value="t('冲泡')" />
-                  <el-option :label="t('点金')" :value="t('点金')" />
-                  <el-option :label="t('分解')" :value="t('分解')" />
-                  <el-option :label="t('转化')" :value="t('转化')" />
+                  <el-option :label="t('挤奶')" :value="'挤奶'" />
+                  <el-option :label="t('采摘')" :value="'采摘'" />
+                  <el-option :label="t('伐木')" :value="'伐木'" />
+                  <el-option :label="t('锻造')" :value="'锻造'" />
+                  <el-option :label="t('制造')" :value="'制造'" />
+                  <el-option :label="t('裁缝')" :value="'裁缝'" />
+                  <el-option :label="t('烹饪')" :value="'烹饪'" />
+                  <el-option :label="t('冲泡')" :value="'冲泡'" />
+                  <el-option :label="t('点金')" :value="'点金'" />
+                  <el-option :label="t('分解')" :value="'分解'" />
+                  <el-option :label="t('转化')" :value="'转化'" />
                 </el-select>
               </el-form-item>
 
@@ -290,19 +342,19 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               <template v-if="showTierFilter">
                 <el-form-item v-if="tierChains.length > 1" :label="t('材质链')">
                   <el-radio-group v-model="ldSearchData.tierChainKey" size="small" @change="handleTierChainChange">
-                    <el-radio-button v-for="c in tierChains" :key="c.key" :label="c.key" class="tier-chain-btn">{{ c.label }}</el-radio-button>
+                    <el-radio-button v-for="c in tierChains" :key="c.key" :label="c.key" class="tier-chain-btn">{{ t(c.label) }}</el-radio-button>
                   </el-radio-group>
                 </el-form-item>
 
                 <el-form-item :label="t('起始材质')">
                   <el-select v-model="ldSearchData.startTierLevel" :placeholder="t('不限')" style="width:90px" clearable @change="handleSearchLD">
-                    <el-option v-for="tier in tierOptions" :key="tier.itemLevel" :label="tier.label" :value="tier.itemLevel" />
+                    <el-option v-for="tier in tierOptions" :key="tier.itemLevel" :label="t(tier.label)" :value="tier.itemLevel" />
                   </el-select>
                 </el-form-item>
 
                 <el-form-item :label="t('制作到')">
                   <el-select v-model="ldSearchData.endTierLevel" :placeholder="t('不限')" style="width:90px" clearable @change="handleSearchLD">
-                    <el-option v-for="tier in tierOptions" :key="tier.itemLevel" :label="tier.label" :value="tier.itemLevel" />
+                    <el-option v-for="tier in tierOptions" :key="tier.itemLevel" :label="t(tier.label)" :value="tier.itemLevel" />
                   </el-select>
                 </el-form-item>
               </template>
@@ -365,7 +417,14 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
             </el-form>
           </template>
           <template #default>
-            <el-table :data="leaderboardData" v-loading="loadingLD" @sort-change="handleSortLD">
+            <!-- 预设对比栏 -->
+          <div v-if="isComparing" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 16px;background:var(--el-fill-color-light);border-radius:6px">
+            <el-tag type="success" size="large">{{ compareNameA }}</el-tag>
+            <span style="font-size:16px;font-weight:bold;color:var(--el-text-color-secondary)">vs</span>
+            <el-tag type="primary" size="large">{{ compareNameB }}</el-tag>
+            <el-button type="danger" size="small" plain @click="exitCompare" style="margin-left:auto">{{ t('退出对比') }}</el-button>
+          </div>
+            <el-table :data="displayLeaderboardData" v-loading="loadingLD" @sort-change="handleSortLD">
               <el-table-column width="54" fixed="left">
                 <template #default="{ row }">
                   <ItemIcon :hrid="row.hrid" />
@@ -390,15 +449,23 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
                   <span :class="row.hasManualPrice ? 'manual' : ''">
                     {{ row.result.profitPDFormat }}&nbsp;
                   </span>
+                  <template v-if="isComparing && row._dataB">
+                    / <span style="color:#409eff">{{ row._dataB.result.profitPDFormat }}</span>
+                  </template>
                   <el-link type="primary" :icon="Edit" @click="setPrice(row)">
                     {{ t('自定义') }}
                   </el-link>
                 </template>
               </el-table-column>
-              <el-table-column prop="result.profitPHFormat" :label="t('利润 / h')" align="center" min-width="120" />
+              <el-table-column :label="t('利润 / h')" align="center" min-width="120"><template #default="{ row }"><span v-if="isComparing && row._dataB">{{ row.result.profitPHFormat }} / <span style="color:#409eff">{{ row._dataB.result.profitPHFormat }}</span></span><span v-else>{{ row.result.profitPHFormat }}</span></template>
+              </el-table-column>
               <el-table-column prop="result.profitRate" :label="t('利润率')" min-width="120" align="center" sortable="custom" :sort-orders="['descending', null]">
                 <template #default="{ row }">
-                  {{ row.result.profitRateFormat }}
+                  <span v-if="isComparing && row._dataB" :style="{color: row.result.profitRate > row._dataB.result.profitRate ? '#16ab1b' : '#f56c6c'}">{{ row.result.profitRateFormat }}</span>
+                  <span v-else>{{ row.result.profitRateFormat }}</span>
+                  <template v-if="isComparing && row._dataB">
+                    / <span style="color:#409eff">{{ row._dataB.result.profitRateFormat }}</span>
+                  </template>
                 </template>
               </el-table-column>
 
@@ -429,28 +496,26 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               <el-table-column min-width="120" :label="t('经验 / h')" align="center">
                 <template #default="{ row }">
                   <div style="display: flex; justify-content: center; align-items: center; gap: 5px">
-                    <div>{{ row.result.expPHFormat }}</div>
+                    <div>
+                      <span v-if="isComparing && row._dataB">{{ row.result.expPHFormat }} / <span style="color:#409eff">{{ row._dataB.result.expPHFormat }}</span></span>
+                      <span v-else>{{ row.result.expPHFormat }}</span>
+                    </div>
                     <el-tooltip v-if="row.expList?.length > 1" placement="top" effect="light">
                       <template #content>
                         <div v-for="(item, i) in row.expList" :key="i" style="display: flex; gap:10px">
-                          <div>
-                            {{ t(item.action) }}
-                          </div>
-                          <div>
-                            {{ item.expPHFormat }}
-                          </div>
+                          <div>{{ t(item.action) }}</div>
+                          <div>{{ item.expPHFormat }}</div>
                         </div>
                       </template>
-                      <el-icon>
-                        <Warning />
-                      </el-icon>
+                      <el-icon><Warning /></el-icon>
                     </el-tooltip>
                   </div>
                 </template>
               </el-table-column>
               <el-table-column :label="t('成交量(1h)')" align="center" min-width="120">
                 <template #default="{ row }">
-                  {{ formatVolume1h(row) }}
+                  <span v-if="isComparing && row._dataB">{{ formatVolume1h(row) }} / <span style="color:#409eff">{{ formatVolume1h(row._dataB) }}</span></span>
+                  <span v-else>{{ formatVolume1h(row) }}</span>
                 </template>
               </el-table-column>
 
@@ -503,17 +568,17 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               </el-form-item>
               <el-form-item prop="phone" :label="t('动作')">
                 <el-select v-model="frSearchData.project" :placeholder="t('请选择')" style="width:100px" clearable @change="handleSearchMN">
-                  <el-option :label="t('挤奶')" :value="t('挤奶')" />
-                  <el-option :label="t('采摘')" :value="t('采摘')" />
-                  <el-option :label="t('伐木')" :value="t('伐木')" />
-                  <el-option :label="t('锻造')" :value="t('锻造')" />
-                  <el-option :label="t('制造')" :value="t('制造')" />
-                  <el-option :label="t('裁缝')" :value="t('裁缝')" />
-                  <el-option :label="t('烹饪')" :value="t('烹饪')" />
-                  <el-option :label="t('冲泡')" :value="t('冲泡')" />
-                  <el-option :label="t('点金')" :value="t('点金')" />
-                  <el-option :label="t('分解')" :value="t('分解')" />
-                  <el-option :label="t('转化')" :value="t('转化')" />
+                  <el-option :label="t('挤奶')" :value="'挤奶'" />
+                  <el-option :label="t('采摘')" :value="'采摘'" />
+                  <el-option :label="t('伐木')" :value="'伐木'" />
+                  <el-option :label="t('锻造')" :value="'锻造'" />
+                  <el-option :label="t('制造')" :value="'制造'" />
+                  <el-option :label="t('裁缝')" :value="'裁缝'" />
+                  <el-option :label="t('烹饪')" :value="'烹饪'" />
+                  <el-option :label="t('冲泡')" :value="'冲泡'" />
+                  <el-option :label="t('点金')" :value="'点金'" />
+                  <el-option :label="t('分解')" :value="'分解'" />
+                  <el-option :label="t('转化')" :value="'转化'" />
                 </el-select>
               </el-form-item>
 
