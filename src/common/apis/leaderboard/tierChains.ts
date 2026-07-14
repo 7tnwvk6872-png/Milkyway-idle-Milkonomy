@@ -87,6 +87,27 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
   ]
 }
 
+// 动作名归一化：英文/繁体动作名统一映射回简体中文 key，
+// 保证中英文界面下逐级制作过滤器都能正确匹配 TIER_CHAINS。
+const PROJECT_ALIAS: Record<string, string> = {
+  // 锻造
+  "锻造": "锻造",
+  "Smithing": "锻造",
+  "Cheesesmithing": "锻造",
+  // 制造
+  "制造": "制造",
+  "Crafting": "制造",
+  // 裁缝 / 缝纫
+  "裁缝": "裁缝",
+  "缝纫": "裁缝",
+  "Tailoring": "裁缝"
+}
+
+export function normalizeProject(project: string): string {
+  return PROJECT_ALIAS[project] || project
+}
+
 export function supportsTierFilter(project: string): boolean {
-  return project === "锻造" || project === "制造" || project === "裁缝"
+  const p = normalizeProject(project)
+  return p === "锻造" || p === "制造" || p === "裁缝"
 }

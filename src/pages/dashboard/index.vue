@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type Calculator from "@/calculator"
 import { getLeaderboardDataApi } from "@@/apis/leaderboard"
-import { supportsTierFilter, TIER_CHAINS } from "@@/apis/leaderboard/tierChains"
+import { normalizeProject, supportsTierFilter, TIER_CHAINS } from "@@/apis/leaderboard/tierChains"
 import ItemIcon from "@@/components/ItemIcon/index.vue"
 import { usePagination } from "@@/composables/usePagination"
 import { Delete, Edit, Search, Star, StarFilled, Warning } from "@element-plus/icons-vue"
@@ -202,7 +202,7 @@ const { t } = useI18n()
 
 // 逐级制作 / 起始材质
 const showTierFilter = computed(() => supportsTierFilter(ldSearchData.value.project))
-const tierChains = computed(() => TIER_CHAINS[ldSearchData.value.project] || [])
+const tierChains = computed(() => TIER_CHAINS[normalizeProject(ldSearchData.value.project)] || [])
 const currentChain = computed(() => {
   const chains = tierChains.value
   if (chains.length === 0) return null
