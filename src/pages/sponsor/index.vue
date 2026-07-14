@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import logoAlipayOrg from "@@/assets/images/sponsor/alipay_org.jpg?url"
+import logoPolokikiWechat from "@@/assets/images/sponsor/polokiki-wechat.jpg?url"
 import logoHyhfishWechat from "@@/assets/images/sponsor/hyhfish-wechat.jpg?url"
 import logoWechatOrg from "@@/assets/images/sponsor/wechat_org.jpg?url"
 import axios from "axios"
@@ -50,7 +51,7 @@ const paymentCards = [
     owner: "hyhfish",
     ownerClass: "maintainer",
     title: "微信",
-    note: "请 luyh7、hyhfish、Polokiki 喝杯奶茶",
+    note: "请hyhfish喝杯奶茶",
     imageUrl: logoHyhfishWechat
   },
   {
@@ -68,7 +69,15 @@ const paymentCards = [
     title: "支付宝",
     note: "luyh7",
     imageUrl: logoAlipayOrg
-  }
+  },
+  {
+    key: "maintainer-alipay-polokiki",
+    owner: "Polokiki",
+    ownerClass: "maintainer",
+    title: "支付宝",
+    note: "请polokiki喝奶茶",
+    imageUrl: logoPolokikiWechat
+  },
 ]
 
 watch(dialogLoading, (val) => {
@@ -317,7 +326,7 @@ loadData()
 }
 
 .maintainer {
-  background: linear-gradient(90deg, #4c6fff, #6b5cff, #8b5cf6, #a855f7);
+  background: linear-gradient(90deg, #16ab1b, #20bf6b, #2ecc71);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }

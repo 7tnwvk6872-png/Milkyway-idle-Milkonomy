@@ -57,6 +57,23 @@ export const publicRoutes: RouteRecordRaw[] = [
   {
     path: "/",
     component: Layouts,
+    redirect: "/enhancer",
+    children: [
+      {
+        path: "enhancer",
+        component: () => import("@/pages/enhancer/index.vue"),
+        name: "Enhancer",
+        meta: {
+          title: t("强化计算"),
+          elIcon: "MagicStick",
+          affix: true
+        }
+      }
+    ]
+  },
+{
+    path: "/",
+    component: Layouts,
     redirect: "/jungle",
     meta: {
       title: t("打野工具"),
@@ -115,24 +132,7 @@ export const publicRoutes: RouteRecordRaw[] = [
       }
     ]
   },
-  {
-    path: "/",
-    component: Layouts,
-    redirect: "/enhancer",
-    children: [
-      {
-        path: "enhancer",
-        component: () => import("@/pages/enhancer/index.vue"),
-        name: "Enhancer",
-        meta: {
-          title: t("强化计算"),
-          elIcon: "MagicStick",
-          affix: true
-        }
-      }
-    ]
-  },
-  {
+    {
     path: "/",
     component: Layouts,
     redirect: "/philosopher",

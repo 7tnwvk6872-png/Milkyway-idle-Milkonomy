@@ -449,4 +449,10 @@ export default {
   "丝绸": "Silk",
   "辐光": "Radiant",
   "至少保留一个预设": "Keep at least one preset",
+  "对比": "Compare",
+  "预设A": "Preset A",
+  "预设B": "Preset B",
+  "开始对比": "Start Compare",
+  "退出对比": "Exit Compare",
+  "请选择不同的预设进行对比": "Please select different presets to compare",
 }

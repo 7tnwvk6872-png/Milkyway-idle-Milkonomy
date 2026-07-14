@@ -4,8 +4,8 @@ import { getLeaderboardDataApi } from "@@/apis/leaderboard"
 import { normalizeProject, supportsTierFilter, TIER_CHAINS } from "@@/apis/leaderboard/tierChains"
 import ItemIcon from "@@/components/ItemIcon/index.vue"
 import { usePagination } from "@@/composables/usePagination"
-import { Delete, Edit, Search, Star, StarFilled, Warning } from "@element-plus/icons-vue"
-import { ElMessageBox, type FormInstance, type Sort } from "element-plus"
+import { ArrowDown, Close, Delete, Edit, Plus, Search, Star, StarFilled, Warning } from "@element-plus/icons-vue"
+import { ElMessage, ElMessageBox, type FormInstance, type Sort } from "element-plus"
 import { cloneDeep, debounce } from "lodash-es"
 
 import { addFavoriteApi, deleteFavoriteApi, getFavoriteDataApi } from "@/common/apis/favorite"
@@ -32,54 +32,117 @@ const { paginationData: paginationDataLD, handleCurrentChange: handleCurrentChan
 
 const leaderboardData = ref<Calculator[]>([])
 
-// 预设对比
+// 预设对比 (N-way)
 const isComparing = ref(false)
-const compareDataB = ref<Record<string, Calculator>>({})
-const compareNameA = ref('')
-const compareNameB = ref('')
+const showCompareSelector = ref(false)
+const comparePresets = ref<number[]>([0, 1])
+const compareDataSets = ref<Record<string, Calculator>[]>([])
+const compareNames = ref<string[]>([])
+const COMPARE_TYPES = ['primary', 'warning', 'success', 'danger', 'info'] as const
 const compareIdxA = ref(0)
-let _comparePhase = 0
+let _compareResolve: (() => void) | null = null
+const compareSelectorRef = ref<HTMLElement>()
 
-function handleCompare(presetBIndex: number) {
-  const ps = usePlayerStore()
-  compareIdxA.value = ps.presetIndex
-  compareNameA.value = ps.presets[ps.presetIndex].name || '预设A'
-  compareNameB.value = ps.presets[presetBIndex].name || '预设B'
-  _comparePhase = 1
-  ps.switchTo(presetBIndex)
+function onCompareSelectorClickOutside(e: MouseEvent) {
+  if (compareSelectorRef.value && !compareSelectorRef.value.contains(e.target as Node)) {
+    const target = e.target as HTMLElement
+    if (target.closest('.el-popper') || target.closest('.el-dropdown-menu')) return
+    if (showCompareSelector.value) showCompareSelector.value = false
+  }
 }
+
+watch(showCompareSelector, (val) => {
+  if (val) {
+    setTimeout(() => document.addEventListener('click', onCompareSelectorClickOutside), 0)
+  } else {
+    document.removeEventListener('click', onCompareSelectorClickOutside)
+  }
+})
+
+function addCompareSlot() {
+  const ps = usePlayerStore()
+  const next = comparePresets.value.length
+  comparePresets.value.push(next < ps.presets.length ? next : 0)
+}
+
+function removeCompareSlot(index: number) {
+  if (comparePresets.value.length <= 2) return
+  comparePresets.value.splice(index, 1)
+}
+
+function startNCompare() {
+  const ps = usePlayerStore()
+  if (comparePresets.value.length < 2) {
+    ElMessage.warning(t('请选择至少2个预设进行对比'))
+    return
+  }
+  
+  compareNames.value = comparePresets.value.map(i => ps.presets[i]?.name || '预设' + i)
+  compareIdxA.value = ps.presetIndex
+  compareDataSets.value = []
+  
+  const unique = [...new Set(comparePresets.value)]
+  let currentIdx = 0
+  
+  function captureNext() {
+    if (currentIdx >= unique.length) {
+      const expanded = comparePresets.value.map(pidx => {
+        const idx = unique.indexOf(pidx)
+        return compareDataSets.value[idx >= 0 ? idx : 0]
+      })
+      compareDataSets.value = expanded
+      isComparing.value = true
+      _compareResolve = null
+      usePlayerStore().switchTo(compareIdxA.value)
+      return
+    }
+    
+    const pidx = unique[currentIdx]
+    currentIdx++
+    
+    // If already on this preset, capture immediately without waiting for switch
+    if (pidx === usePlayerStore().presetIndex) {
+      const map: Record<string, Calculator> = {}
+      for (const item of leaderboardData.value) map[item.key] = item
+      compareDataSets.value.push(map)
+      captureNext()
+    } else {
+      _compareResolve = captureNext
+      usePlayerStore().switchTo(pidx)
+    }
+  }
+  
+  captureNext()
+}
+
+// Watch leaderboardData: capture data for comparison
+watch(leaderboardData, (newVal) => {
+  if (_compareResolve) {
+    const map: Record<string, Calculator> = {}
+    for (const item of newVal) map[item.key] = item
+    compareDataSets.value.push(map)
+    const resolve = _compareResolve
+    _compareResolve = null
+    resolve()
+  }
+})
 
 function exitCompare() {
   isComparing.value = false
-  compareDataB.value = {}
-  // 如果正在恢复中，强制切回 A
-  if (_comparePhase === 2) {
-    usePlayerStore().switchTo(compareIdxA.value)
-    _comparePhase = 0
-  }
+  compareDataSets.value = []
+  _compareResolve = null
 }
 
 const displayLeaderboardData = computed(() => {
-  if (!isComparing.value) return leaderboardData.value
+  if (!isComparing.value || compareDataSets.value.length === 0) return leaderboardData.value
   return leaderboardData.value.map(row => {
-    const b = compareDataB.value[row.key]
-    if (!b) return row
-    return { ...row, _dataB: b }
+    const dataSets = compareDataSets.value
+    const result: any = { ...row, _compareData: [] as (Calculator | null)[] }
+    for (const ds of dataSets) {
+      result._compareData.push(ds[row.key] || null)
+    }
+    return result
   })
-})
-
-// 监听 leaderboardData 捕获 B 的计算结果
-watch(leaderboardData, (newVal) => {
-  if (_comparePhase === 1) {
-    const map: Record<string, Calculator> = {}
-    for (const item of newVal) map[item.key] = item
-    compareDataB.value = map
-    _comparePhase = 2
-    usePlayerStore().switchTo(compareIdxA.value)
-  } else if (_comparePhase === 2) {
-    isComparing.value = true
-    _comparePhase = 0
-  }
 })
 
 const ldSearchFormRef = ref<FormInstance | null>(null)
@@ -291,7 +354,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
     <div class="game-info">
       <GameInfo />
       <div>
-        <ActionConfig @compare="handleCompare" />
+        <ActionConfig @toggleCompare="!isComparing && (showCompareSelector = !showCompareSelector)" />
       </div>
 
       <PriceStatusSelect
@@ -417,14 +480,46 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
             </el-form>
           </template>
           <template #default>
-            <!-- 预设对比栏 -->
-          <div v-if="isComparing" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 16px;background:var(--el-fill-color-light);border-radius:6px">
-            <el-tag type="success" size="large">{{ compareNameA }}</el-tag>
-            <span style="font-size:16px;font-weight:bold;color:var(--el-text-color-secondary)">vs</span>
-            <el-tag type="primary" size="large">{{ compareNameB }}</el-tag>
-            <el-button type="danger" size="small" plain @click="exitCompare" style="margin-left:auto">{{ t('退出对比') }}</el-button>
+            <!-- N-way 对比选择器 -->
+          <div
+            v-if="showCompareSelector || isComparing"
+            ref="compareSelectorRef"
+            style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px 16px;border:1px solid var(--el-border-color);border-radius:4px"
+          >
+            <template v-for="(pidx, si) in comparePresets" :key="si">
+              <span v-if="si > 0" style="font-weight:bold;color:var(--el-text-color-secondary)">vs</span>
+              <el-dropdown trigger="click" @command="(i: number) => comparePresets[si] = i">
+                <el-button size="small" :type="COMPARE_TYPES[si % 5]" plain style="min-width:80px;text-align:center">
+                  {{ usePlayerStore().presets[pidx]?.name || '预设' + pidx }}
+                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="(p, i) in usePlayerStore().presets"
+                      :key="i"
+                      :command="i"
+                      :class="{ 'is-active': pidx === i }"
+                    >
+                      {{ p.name || '预设' + i }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-button
+                v-if="comparePresets.length > 2"
+                size="small"
+                :icon="Close"
+                circle
+                @click.stop="removeCompareSlot(si)"
+                style="margin-left:-4px"
+              />
+            </template>
+            <el-button size="small" :icon="Plus" circle @click.stop="addCompareSlot" />
+            <el-button size="small" type="primary" @click.stop="startNCompare()">{{ t("开始对比") }}</el-button>
+            <el-button size="small" plain @click.stop="exitCompare(); showCompareSelector = false" style="margin-left:auto">{{ t("退出对比") }}</el-button>
           </div>
-            <el-table :data="displayLeaderboardData" v-loading="loadingLD" @sort-change="handleSortLD">
+            <el-table :data="displayLeaderboardData" v-loading="loadingLD" @sort-change="handleSortLD" style="overflow-x:auto">
               <el-table-column width="54" fixed="left">
                 <template #default="{ row }">
                   <ItemIcon :hrid="row.hrid" />
@@ -447,25 +542,34 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               <el-table-column :label="t('利润 / 天')" align="center" min-width="120">
                 <template #default="{ row }">
                   <span :class="row.hasManualPrice ? 'manual' : ''">
-                    {{ row.result.profitPDFormat }}&nbsp;
-                  </span>
-                  <template v-if="isComparing && row._dataB">
-                    / <span style="color:#409eff">{{ row._dataB.result.profitPDFormat }}</span>
+                    <template v-if="isComparing && row._compareData?.length">
+                    <template v-for="(cd, ci) in row._compareData" :key="ci">
+                      <span v-if="cd">
+                        <span v-if="ci > 0"> / </span>
+                        <span :style="{color: ['#409eff','#e6a23c','#16ab1b','#f56c6c','#909399'][ci % 5]}">{{ cd.result.profitPDFormat }}</span>
+                      </span>
+                    </template>
                   </template>
+                  <span v-else style="word-break:break-all;display:inline-block;max-width:200px">{{ row.result.profitPDFormat }}</span>&nbsp;
+                  </span>
                   <el-link type="primary" :icon="Edit" @click="setPrice(row)">
                     {{ t('自定义') }}
                   </el-link>
                 </template>
               </el-table-column>
-              <el-table-column :label="t('利润 / h')" align="center" min-width="120"><template #default="{ row }"><span v-if="isComparing && row._dataB">{{ row.result.profitPHFormat }} / <span style="color:#409eff">{{ row._dataB.result.profitPHFormat }}</span></span><span v-else>{{ row.result.profitPHFormat }}</span></template>
+              <el-table-column :label="t('利润 / h')" align="center" min-width="120"><template #default="{ row }"><template v-if="isComparing && row._compareData?.length"><template v-for="(cd, ci) in row._compareData" :key="ci"><span v-if="cd"><span v-if="ci > 0"> / </span><span :style="{color: ['#409eff','#e6a23c','#16ab1b','#f56c6c','#909399'][ci % 5]}">{{ cd.result.profitPHFormat }}</span></span></template></template><span v-else style="word-break:break-all;display:inline-block;max-width:180px">{{ row.result.profitPHFormat }}</span></template>
               </el-table-column>
               <el-table-column prop="result.profitRate" :label="t('利润率')" min-width="120" align="center" sortable="custom" :sort-orders="['descending', null]">
                 <template #default="{ row }">
-                  <span v-if="isComparing && row._dataB" :style="{color: row.result.profitRate > row._dataB.result.profitRate ? '#16ab1b' : '#f56c6c'}">{{ row.result.profitRateFormat }}</span>
-                  <span v-else>{{ row.result.profitRateFormat }}</span>
-                  <template v-if="isComparing && row._dataB">
-                    / <span style="color:#409eff">{{ row._dataB.result.profitRateFormat }}</span>
+                  <template v-if="isComparing && row._compareData?.length">
+                    <template v-for="(cd, ci) in row._compareData" :key="ci">
+                      <span v-if="cd">
+                        <span v-if="ci > 0"> / </span>
+                        <span :style="{color: ['#409eff','#e6a23c','#16ab1b','#f56c6c','#909399'][ci % 5]}">{{ cd.result.profitRateFormat }}</span>
+                      </span>
+                    </template>
                   </template>
+                  <span v-else>{{ row.result.profitRateFormat }}</span>
                 </template>
               </el-table-column>
 
@@ -497,7 +601,14 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
                 <template #default="{ row }">
                   <div style="display: flex; justify-content: center; align-items: center; gap: 5px">
                     <div>
-                      <span v-if="isComparing && row._dataB">{{ row.result.expPHFormat }} / <span style="color:#409eff">{{ row._dataB.result.expPHFormat }}</span></span>
+                      <template v-if="isComparing && row._compareData?.length">
+                        <template v-for="(cd, ci) in row._compareData" :key="ci">
+                          <span v-if="cd">
+                            <span v-if="ci > 0"> / </span>
+                            <span :style="{color: ['#409eff','#e6a23c','#16ab1b','#f56c6c','#909399'][ci % 5]}">{{ cd.result.expPHFormat }}</span>
+                          </span>
+                        </template>
+                      </template>
                       <span v-else>{{ row.result.expPHFormat }}</span>
                     </div>
                     <el-tooltip v-if="row.expList?.length > 1" placement="top" effect="light">
@@ -514,8 +625,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               </el-table-column>
               <el-table-column :label="t('成交量(1h)')" align="center" min-width="120">
                 <template #default="{ row }">
-                  <span v-if="isComparing && row._dataB">{{ formatVolume1h(row) }} / <span style="color:#409eff">{{ formatVolume1h(row._dataB) }}</span></span>
-                  <span v-else>{{ formatVolume1h(row) }}</span>
+                  <span>{{ formatVolume1h(row) }}</span>
                 </template>
               </el-table-column>
 
@@ -626,7 +736,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               <el-table-column :label="t('利润 / 天')">
                 <template #default="{ row }">
                   <span :class="row.hasManualPrice ? 'manual' : ''">
-                    {{ row.result.profitPDFormat }}&nbsp;
+                    <span style="word-break:break-all;display:inline-block;max-width:200px">{{ row.result.profitPDFormat }}</span>&nbsp;
                   </span>
                   <el-link v-if="usePriceStore().activated" type="primary" :icon="Edit" @click="setPrice(row)">
                     {{ t('自定义') }}

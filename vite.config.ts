@@ -71,17 +71,8 @@ export default defineConfig(({ mode }) => {
            * @description 1. 注意这些包名必须存在，否则打包会报错
            * @description 2. 如果你不想自定义 chunk 分割策略，可以直接移除这段配置
            */
-          manualChunks: (id) => {
-            // 基础分块策略
-            if (id.includes("node_modules")) {
-              if (id.includes("vue") || id.includes("vue-router") || id.includes("pinia")) {
-                return "vue"
-              }
-              if (id.includes("element-plus") || id.includes("@element-plus/icons-vue")) {
-                return "element"
-              }
-            }
-          }
+          // manualChunks 已移除 —— 手工拆分 Vue/Element 会导致循环依赖，
+          // 触发 TDZ 错误：Cannot access 'Mo' before initialization
         }
       },
       // 是否开启 gzip 压缩大小报告，禁用时能略微提高构建性能

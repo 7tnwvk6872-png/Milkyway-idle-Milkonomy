@@ -13,7 +13,7 @@ import { ACHIEVEMENT_TIER_LIST, ACTION_LIST } from "@/pinia/stores/game"
 import { defaultActionConfig, usePlayerStore } from "@/pinia/stores/player"
 
 const emit = defineEmits<{
-  compare: [index: number]
+  toggleCompare: []
 }>()
 defineProps<{
   actions?: Action[]
@@ -105,11 +105,11 @@ function onDialog(config: ActionConfig, index: number) {
 }
 
 function onSelect(config: ActionConfig, index: number) {
-  // 如果选择的是用户当前config，则弹窗修改，否则触发对比
+  // 点击非当前预设：直接切换
   if (index === playerStore.presetIndex) {
     onDialog(config, index)
   } else {
-    emit("compare", index)
+    playerStore.switchTo(index)
   }
 }
 
@@ -466,6 +466,13 @@ function getAchievementEffect(type: AchievementTier) {
         class="ml-1 w-24px" size="small" :icon="Plus" plain
         @click="onAdd"
       />
+      <span style="width:1px;height:20px;background:var(--el-border-color);margin:0 4px"></span>
+      <el-button
+        class="compare-trigger-btn" size="small" plain
+        @click="emit('toggleCompare')"
+      >
+        {{ t("对比") }}
+      </el-button>
     </div>
 
     <template v-for="[key, communityBuff] in playerStore.config.communityBuffMap.entries()" :key="key">
