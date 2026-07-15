@@ -399,7 +399,8 @@ const HOUSE_ROOM_TO_ACTION: Record<string, Action> = {
   sewing_parlor: "tailoring",
   kitchen: "cooking",
   brewery: "brewing",
-  laboratory: "alchemy"
+  laboratory: "alchemy",
+  observatory: "enhancing"
 }
 
 // 完整数据导入（战斗模拟器 / Milkonomy Exporter 两种格式）
@@ -584,9 +585,9 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
           const defaultItem = defaultConfig.actionConfigMap.get(action)!
           const toolLoc = `${action}_tool`
           const toolData = equipMap[toolLoc]
-          const bodyData = equipMap["body"]
+          const bodyData = equipMap["body"]; const capeData = equipMap["back"]
           const legsData = equipMap["legs"]
-          const charmData = equipMap["charm"]
+          const charmData = equipMap["charm"] || equipMap["amulet"]
 
           actionConfigMap.set(action, {
             action,
@@ -606,7 +607,11 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
               hrid: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.itemHrid : (useDefaults ? defaultItem.legs.hrid : undefined),
               enhanceLevel: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.enhancementLevel : (useDefaults ? defaultItem.legs.enhanceLevel : undefined)
             },
-            back: { ...defaultItem.back },
+            back: capeData?.itemHrid && doesEquipmentApply(capeData.itemHrid, action) ? {
+              ...defaultItem.back,
+              hrid: capeData.itemHrid,
+              enhanceLevel: capeData.enhancementLevel
+            } : { ...defaultItem.back },
             charm: {
               type: "charm",
               hrid: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.itemHrid : (useDefaults ? defaultItem.charm.hrid : undefined),
@@ -648,9 +653,9 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
           const defaultItem = defaultConfig.actionConfigMap.get(action)!
           const toolLoc = `${action}_tool`
           const toolData = equipMap[toolLoc]
-          const bodyData = equipMap["body"]
+          const bodyData = equipMap["body"]; const capeData = equipMap["back"]
           const legsData = equipMap["legs"]
-          const charmData = equipMap["charm"]
+          const charmData = equipMap["charm"] || equipMap["amulet"]
 
           actionConfigMap.set(action, {
             action,
@@ -670,7 +675,11 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
               hrid: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.itemHrid : (useDefaults ? defaultItem.legs.hrid : undefined),
               enhanceLevel: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.enhancementLevel : (useDefaults ? defaultItem.legs.enhanceLevel : undefined)
             },
-            back: { ...defaultItem.back },
+            back: capeData?.itemHrid && doesEquipmentApply(capeData.itemHrid, action) ? {
+              ...defaultItem.back,
+              hrid: capeData.itemHrid,
+              enhanceLevel: capeData.enhancementLevel
+            } : { ...defaultItem.back },
             charm: {
               type: "charm",
               hrid: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.itemHrid : (useDefaults ? defaultItem.charm.hrid : undefined),
@@ -698,11 +707,17 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
           }
         }
       } else if (data.achievements) {
-        // 根据成就点数估算
-        const points = typeof data.achievementPoints === "number" ? data.achievementPoints
-          : Object.values(data.achievements).filter(v => v === true).length * 10
+        // 根据成就点数估算 (兼容 boolean、{isCompleted}、{completed} 三种格式)
+        const achValues = Object.values(data.achievements) as any[]
+        var points = typeof data.achievementPoints === "number" && data.achievementPoints > 0
+          ? data.achievementPoints
+          : achValues.filter(function(v) {
+              if (v === true || v === 1) return true
+              if (v && typeof v === "object") return v.isCompleted === true || v.completed === true
+              return false
+            }).length * 10
         const tiers: AchievementTier[] = ["beginner", "novice", "adept", "veteran", "elite", "champion"]
-        const thresholds = [10, 25, 50, 100, 200, 400]
+        const thresholds: number[] = [10, 25, 50, 100, 200, 400]
         for (let i = 0; i < tiers.length; i++) {
           achievementBuffMap.set(tiers[i], {
             type: tiers[i],
