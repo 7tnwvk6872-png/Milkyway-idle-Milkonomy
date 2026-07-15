@@ -1,111 +1,69 @@
-<script lang="ts" setup>
-interface ChangelogEntry {
-  version: string
-  date: string
-  changes: { zh: string; en: string }[]
-}
-
-const { t, locale } = useI18n()
-const appVersion = __APP_VERSION__
-
-function l(item: { zh: string; en: string }) {
-  return locale.value === 'en' ? item.en : item.zh
-}
-
-const entries: ChangelogEntry[] = [{
-    version: "2.0.0", date: "2026-07-14",
-    changes: [
-      {
-        zh: "全局预设对比：利润总览、打野工具、超级打野、打野继承、继承、分解、挑选、强化合成、手工炼金全部页面支持预设对比——利润/h、利润率、利润/天、经验/h等数据并排对比，不同预设用不同颜色区分。预设栏右侧点「对比」按钮展开。",
-        en: "Global Preset Comparison: All pages (Dashboard, Jungle, Super Jungle, Jungle Inherit, Inherit, Decompose, Pickout, Enhanposer, Manualchemy) now support cross-preset comparison — profit/h, profit rate, profit/day, EXP/h side by side in color-coded columns."
-      },
-      {
-        zh: "预设删除：预设支持右键菜单一键删除，不再需要的预设可以直接清理。",
-        en: "Preset Deletion: Right-click a preset to delete it instantly — no more cluttered preset list."
-      },
-      {
-        zh: "逐级制作筛选：锻造/制造/裁缝新增「材质链」和「起始材质」筛选，只计算从指定等级材料开始制作的利润，支持全链逐级选择。",
-        en: "Tier Crafting Filter: Added material chain and starting material filters for Smithing/Crafting/Tailoring. Only calculate profit from a chosen material tier."
-      },
-      {
-        zh: "强化精确等级：打野工具支持按精确等级筛选强化利润，不再只能看全等级汇总。",
-        en: "Precise Enchant Level: Jungle tools now filter enchant profit by exact level instead of all-level summary."
-      },
-      {
-        zh: "左侧菜单重排：强化计算移至打野工具上方，常用功能更顺手。",
-        en: "Menu Reorder: Enchant Calculator moved above Jungle Tools for quicker access."
-      }
-    ]
-  }]
-const activeVersions = ref<string[]>([entries[0]?.version].filter(Boolean) as string[])
-</script>
-
 <template>
-  <div class="app-container">
-    <el-card shadow="never">
-      <template #header>
-        <div class="header">
-          <span class="title">{{ t("更新日志") }}</span>
-          <el-tag size="small" type="info">
-            {{ t("当前版本") }}：v{{ appVersion }}
-          </el-tag>
-        </div>
-      </template>
+  <div class="changelog-page">
+    <h2>v2.1.0 — 2026-07-15</h2>
 
-      <el-collapse v-model="activeVersions">
-        <el-collapse-item v-for="entry in entries" :key="entry.version" :name="entry.version">
-          <template #title>
-            <div class="collapse-title">
-              <span class="version">v{{ entry.version }}</span>
-              <span class="date">{{ entry.date }}</span>
-            </div>
-          </template>
-          <ul class="changes">
-            <li v-for="(c, idx) in entry.changes" :key="idx">
-              {{ l(c) }}
-            </li>
-          </ul>
-        </el-collapse-item>
-      </el-collapse>
-    </el-card>
+    <p><strong>1. 神龛数据</strong></p>
+    <p>导入生活数据时自动识别公会神龛等级，支持五种神龛：力量、节奏、精神、稀有、学者。数据来源于游戏内公会建筑等级，导出脚本自动提取，导入时自动映射填入。</p>
+
+    <p><strong>2. 导入升级</strong></p>
+    <p>导入对话框从简单文本框改为完整交互界面。粘贴 JSON 数据后，勾选「数据升级」并通过下拉框选择目标预设，即可一键合并。界面新增提示图标，悬停显示功能说明。</p>
+
+    <p><strong>3. 数据合并</strong></p>
+    <p>勾选「数据升级」后导入数据与选中预设自动对比取优。合并规则：装备、技能、房子、神龛取两者最高等级，社区 Buff 使用最新导入数据，预设颜色与封印保持不变。不勾选则按原有逻辑创建新预设。</p>
+
+    <p><strong>4. 修复</strong></p>
+    <ul>
+      <li>加号按钮在超过 5 个预设后不再消失。</li>
+    </ul>
+
+    <p><strong>5. 导出脚本 v1.2.0</strong></p>
+    <p>一键从游戏内导出完整生活技能数据（技能、装备、房子、神龛、社区 Buff），粘贴到 Milkonomy 即可导入。安装链接：<a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank">Milkonomy Data Exporter</a></p>
+    <ul>
+      <li>根据游戏域名自动适配中英文界面。</li>
+      <li>新增神龛数据导出。</li>
+    </ul>
+
+    <hr />
+
+    <h2>v2.0.0 — 2026-07-14</h2>
+    <ul>
+      <li>生活数据一键导入（技能、装备、房子、社区 Buff、成就）</li>
+      <li>独立油猴导出脚本</li>
+      <li>9 个利润页面全部支持预设对比</li>
+      <li>商店物品标注来源</li>
+    </ul>
   </div>
 </template>
 
-<style lang="scss" scoped>
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.title {
-  font-weight: 600;
-}
-
-.collapse-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 12px;
-}
-
-.version {
-  font-weight: 600;
-}
-
-.date {
-  opacity: 0.7;
-  font-size: 12px;
-}
-
-.changes {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.changes > li {
+<style scoped>
+.changelog-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
   line-height: 1.8;
+  color: var(--el-text-color-primary);
+}
+.changelog-page h2 {
+  font-size: 20px;
+  margin: 24px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--el-border-color);
+}
+.changelog-page p {
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+}
+.changelog-page li {
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+  margin: 4px 0;
+}
+.changelog-page a {
+  color: var(--el-color-primary);
+}
+.changelog-page hr {
+  margin: 24px 0;
+  border: none;
+  border-top: 1px solid var(--el-border-color);
 }
 </style>

@@ -44,23 +44,6 @@ export const privateRoutes: RouteRecordRaw[] = [
     ]
   },
   {
-    path: "/",
-    component: Layouts,
-    redirect: "/enhanposer",
-    children: [
-      {
-        path: "enhanposest",
-        component: () => import("@/pages/enhanposer/enhanposest.vue"),
-        name: "Enhanposest",
-        meta: {
-          title: t("超级强化分解"),
-          affix: false,
-          svgIcon: "dashboard"
-        }
-      }
-    ]
-  },
-  {
     path: "/demo",
     component: Layouts,
     redirect: "/demo/unocss",
@@ -139,6 +122,40 @@ export const privateRoutes: RouteRecordRaw[] = [
   {
     path: "/",
     component: Layouts,
+    redirect: "/valhalla",
+    children: [
+      {
+        path: "valhalla",
+        component: () => import("@/pages/valhalla/index.vue"),
+        name: "Valhalla",
+        meta: {
+          title: t("英灵殿"),
+          elIcon: "User",
+          affix: false
+        }
+      }
+    ]
+  },
+  {
+    path: "/",
+    component: Layouts,
+    redirect: "/burial",
+    children: [
+      {
+        path: "burial",
+        component: () => import("@/pages/burial/index.vue"),
+        name: "Burial",
+        meta: {
+          title: t("埋骨地"),
+          elIcon: "User",
+          affix: false
+        }
+      }
+    ]
+  },
+  {
+    path: "/",
+    component: Layouts,
     redirect: "/sponsor",
     children: [
       {
@@ -148,6 +165,23 @@ export const privateRoutes: RouteRecordRaw[] = [
         meta: {
           title: t("打赏"),
           elIcon: "Coin",
+          affix: true
+        }
+      }
+    ]
+  },
+  {
+    path: "/",
+    component: Layouts,
+    redirect: "/changelog",
+    children: [
+      {
+        path: "changelog",
+        component: () => import("@/pages/changelog/index.vue"),
+        name: "Changelog",
+        meta: {
+          title: t("更新日志"),
+          elIcon: "Document",
           affix: true
         }
       }
@@ -201,23 +235,6 @@ export const privateRoutes: RouteRecordRaw[] = [
         }
       }
 
-    ]
-  },
-  {
-    path: "/",
-    component: Layouts,
-    redirect: "/changelog",
-    children: [
-      {
-        path: "changelog",
-        component: () => import("@/pages/changelog/index.vue"),
-        name: "Changelog",
-        meta: {
-          title: t("更新日志"),
-          elIcon: "Document",
-          affix: false
-        }
-      }
     ]
   }
 ]

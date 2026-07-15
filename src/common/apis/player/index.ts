@@ -1,7 +1,7 @@
 import type Calculator from "@/calculator"
-import type { ActionConfig, PlayerEquipmentItem } from "@/pinia/stores/player"
+import type { ActionConfig, PlayerEquipmentItem, ShrineType } from "@/pinia/stores/player"
 import type { AchievementTier, Action, CommunityBuff, Equipment, ItemDetail, NoncombatStatsKey, NoncombatStatsProp } from "~/game"
-import { DEFAULT_SEPCIAL_EQUIPMENT_LIST, DEFAULT_TEA } from "@/common/config"
+import { DEFAULT_SEPCIAL_EQUIPMENT_LIST, DEFAULT_TEA, SHRINE_CONFIG } from "@/common/config"
 import { getEquipmentTypeOf, getKeyOf } from "@/common/utils/game"
 import { ACHIEVEMENT_TIER_LIST, ACTION_LIST, COMMUNITY_BUFF_LIST, EQUIPMENT_LIST, HOUSE_MAP, useGameStoreOutside } from "@/pinia/stores/game"
 import { usePlayerStoreOutside } from "@/pinia/stores/player"
@@ -194,6 +194,10 @@ export function getAchievementBuffOf(type: AchievementTier) {
   return playerConfig.achievementBuffMap.get(type) ?? defaultPlayerConfig.achievementBuffMap.get(type)!
 }
 
+export function getShrineBuffOf(type: ShrineType) {
+  return playerConfig.shrineBuffMap.get(type) ?? defaultPlayerConfig.shrineBuffMap.get(type)!
+}
+
 export function getSealsOf() {
   const seals = playerConfig.seals ?? defaultPlayerConfig.seals
   return Array.isArray(seals) ? seals : []
@@ -360,6 +364,25 @@ function initBuffMap() {
         const prop = `${action}${key}` as NoncombatStatsProp
         buffs[prop] = (buffs[prop] || 0) + ratio
       }
+    }
+  }
+
+  // 神龛
+  const SHRINE_ACTION_MAP: Partial<Record<NoncombatStatsKey, Action[]>> = {
+    Efficiency: ACTIONS_ALL.filter(action => action !== "enhancing"),
+    Speed: ACTIONS_ALL,
+    EssenceFind: ACTIONS_ALL,
+    RareFind: ACTIONS_ALL,
+    Experience: ACTIONS_ALL
+  }
+  for (const [type, config] of Object.entries(SHRINE_CONFIG)) {
+    const shrine = getShrineBuffOf(type as ShrineType)
+    if (!shrine || !shrine.level) continue
+    const bonus = shrine.level * config.perLevel
+    const targetActions = SHRINE_ACTION_MAP[config.key] || ACTIONS_ALL
+    for (const action of targetActions) {
+      const prop = `${action}${config.key}` as NoncombatStatsProp
+      buffs[prop] = (buffs[prop] || 0) + bonus
     }
   }
   console.log("buffs", buffs)

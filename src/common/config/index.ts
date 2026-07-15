@@ -1,5 +1,5 @@
-import type { AchievementBuffItem, CommunityBuffItem, PlayerEquipmentItem } from "@/pinia/stores/player"
-import type { Action } from "~/game"
+import type { AchievementBuffItem, CommunityBuffItem, PlayerEquipmentItem, ShrineBuffItem } from "@/pinia/stores/player"
+import type { Action, NoncombatStatsKey } from "~/game"
 
 export const DEFAULT_SEPCIAL_EQUIPMENT_LIST: PlayerEquipmentItem[] = [
   { type: "off_hand", hrid: "/items/eye_watch", enhanceLevel: 10 },
@@ -39,3 +39,19 @@ export const DEFAULT_ACHIEVEMENT_BUFF_LIST: AchievementBuffItem[] = [
   { type: "veteran", enabled: false },
   { type: "champion", enabled: false }
 ]
+
+export const DEFAULT_SHRINE_LIST: ShrineBuffItem[] = [
+  { type: "power", level: 0 },
+  { type: "rhythm", level: 0 },
+  { type: "spirit", level: 0 },
+  { type: "rare", level: 0 },
+  { type: "scholar", level: 0 }
+]
+
+export const SHRINE_CONFIG: Record<string, { key: NoncombatStatsKey, perLevel: number, name: string, label: string }> = {
+  power: { key: "Efficiency", perLevel: 0.005, name: "力量神龛", label: "效率" },
+  rhythm: { key: "Speed", perLevel: 0.005, name: "节奏神龛", label: "行动速度" },
+  spirit: { key: "EssenceFind", perLevel: 0.02, name: "精神神龛", label: "精华发现" },
+  rare: { key: "RareFind", perLevel: 0.01, name: "稀有神龛", label: "稀有发现" },
+  scholar: { key: "Experience", perLevel: 0.005, name: "学者神龛", label: "经验" }
+}

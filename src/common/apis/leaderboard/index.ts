@@ -11,6 +11,7 @@ import locales, { getTrans } from "@/locales"
 import { type StorageCalculatorItem, useFavoriteStoreOutside } from "@/pinia/stores/favorite"
 import { useGameStoreOutside } from "@/pinia/stores/game"
 import { getGameDataApi } from "../game"
+import { isShopTier, parseTierLevel, TIER_CHAINS } from "./tierChains"
 import { handlePage, handlePush, handleSearch, handleSort, handleVolume1hSearch } from "../utils"
 
 const { t } = locales.global
@@ -76,10 +77,57 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
       const startLevel = firstCal?.item?.itemLevel
       // 终点材质：workflow 最终产物 itemLevel
       const endLevel = item.item?.itemLevel
-      if (hasStartTier && startLevel !== Number(startTier)) return false
-      if (hasEndTier && endLevel !== Number(endTier)) return false
+      if (hasStartTier && startLevel !== parseTierLevel(startTier)) return false
+      if (hasEndTier && endLevel !== parseTierLevel(endTier)) return false
       return true
     })
+  }
+
+  // 商店购买模式：起始材质的基础物品使用商店固定价格
+  if (isShopTier(startTier)) {
+    const tierLevel = parseTierLevel(startTier)
+    const chains = TIER_CHAINS
+    let shopCost: number | undefined
+    for (const chainList of Object.values(chains)) {
+      for (const chain of chainList) {
+        const tier = chain.tiers.find((t: any) => t.itemLevel === tierLevel && t.shopCost)
+        if (tier) { shopCost = tier.shopCost; break }
+      }
+      if (shopCost !== undefined) break
+    }
+    if (shopCost !== undefined) {
+      profitList = profitList.map((item: any) => {
+        const ingrList = item.ingredientListWithPrice
+        if (!Array.isArray(ingrList) || ingrList.length === 0) return item
+        
+        // 用商店价替换第一个原料的价格
+        const oldPrice = ingrList[0].price || 0
+        const priceDelta = shopCost - oldPrice
+        if (priceDelta === 0) return item
+        
+        // 更新原料价格
+        const newIngrList = ingrList.map((ing: any, i: number) => {
+          if (i === 0) return { ...ing, price: shopCost }
+          return ing
+        })
+        
+        // 用价格差值重新计算利润相关字段
+        // 假设 countPH 是每小时消耗量，利润变化 = -delta * countPH
+        const countPH = ingrList[0].countPH || 1
+        const profitDelta = -priceDelta * countPH
+        
+        const result = { ...item.result }
+        result.profitPH = (result.profitPH || 0) + profitDelta
+        result.profitPD = (result.profitPD || 0) + profitDelta * 24
+        
+        return {
+          ...item,
+          ingredientListWithPrice: newIngrList,
+          result,
+          hasManualPrice: true
+        }
+      })
+    }
   }
 
   return handlePage(handleSort(handleSearch(profitList, params), params), params)

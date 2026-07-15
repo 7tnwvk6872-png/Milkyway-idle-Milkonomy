@@ -1,7 +1,7 @@
 import type { AchievementTier, Action, CommunityBuff, Equipment } from "~/game"
 import { defineStore } from "pinia"
 import { clearEnhancelateCache } from "@/common/apis/game"
-import { DEFAULT_ACHIEVEMENT_BUFF_LIST, DEFAULT_COMMUNITY_BUFF_LIST, DEFAULT_SEPCIAL_EQUIPMENT_LIST, DEFAULT_TEA } from "@/common/config"
+import { DEFAULT_ACHIEVEMENT_BUFF_LIST, DEFAULT_COMMUNITY_BUFF_LIST, DEFAULT_SEPCIAL_EQUIPMENT_LIST, DEFAULT_SHRINE_LIST, DEFAULT_TEA } from "@/common/config"
 import { pinia } from "@/pinia"
 import { ACTION_LIST, useGameStoreOutside } from "./game"
 
@@ -124,11 +124,16 @@ export function defaultActionConfig(name: string, color: string) {
       enabled: buff.enabled
     })
   }
+  const shrineBuffMap = new Map<ShrineType, ShrineBuffItem>()
+  for (const buff of Object.values(DEFAULT_SHRINE_LIST)) {
+    shrineBuffMap.set(buff.type, { ...buff })
+  }
   return {
     actionConfigMap,
     specialEquimentMap,
     communityBuffMap,
     achievementBuffMap,
+    shrineBuffMap,
     seals: [],
     name,
     color
@@ -164,6 +169,14 @@ export interface AchievementBuffItem {
   type: AchievementTier
   enabled: boolean
 }
+
+export type ShrineType = "power" | "rhythm" | "spirit" | "rare" | "scholar"
+
+export interface ShrineBuffItem {
+  type: ShrineType
+  level: number
+}
+
 export interface ActionConfig {
   name?: string
   color?: string
@@ -172,6 +185,7 @@ export interface ActionConfig {
   specialEquimentMap: Map<Equipment, PlayerEquipmentItem>
   communityBuffMap: Map<CommunityBuff, CommunityBuffItem>
   achievementBuffMap: Map<AchievementTier, AchievementBuffItem>
+  shrineBuffMap: Map<ShrineType, ShrineBuffItem>
 }
 
 // 向前兼容
@@ -181,6 +195,7 @@ function loadLegacyConfig() {
     specialEquimentMap: new Map<Equipment, PlayerEquipmentItem>(),
     communityBuffMap: new Map<CommunityBuff, CommunityBuffItem>(),
     achievementBuffMap: new Map<AchievementTier, AchievementBuffItem>(),
+    shrineBuffMap: new Map<ShrineType, ShrineBuffItem>(),
     seals: [] as string[],
     name: "0",
     color: "#11BF11"
@@ -191,6 +206,7 @@ function loadLegacyConfig() {
     config.specialEquimentMap = new Map<Equipment, PlayerEquipmentItem>(Object.entries(data.specialEquimentMap || {}) as [Equipment, PlayerEquipmentItem][])
     config.communityBuffMap = new Map<CommunityBuff, CommunityBuffItem>(Object.entries(data.communityBuffMap || {}) as [CommunityBuff, CommunityBuffItem][])
     config.achievementBuffMap = new Map<AchievementTier, AchievementBuffItem>(Object.entries(data.achievementBuffMap || {}) as [AchievementTier, AchievementBuffItem][])
+    config.shrineBuffMap = new Map<ShrineType, ShrineBuffItem>(Object.entries(data.shrineBuffMap || {}) as [ShrineType, ShrineBuffItem][])
     config.seals = normalizeSeals(data.seals || data.seal || extractLegacySealsFromActionConfigMap(config.actionConfigMap))
   } catch {
   }
@@ -215,7 +231,8 @@ function loadPresets(): ActionConfig[] {
         actionConfigMap: new Map<Action, ActionConfigItem>(Object.entries(item.actionConfigMap || {}) as [Action, ActionConfigItem][]),
         specialEquimentMap: new Map<Equipment, PlayerEquipmentItem>(Object.entries(item.specialEquimentMap || {}) as [Equipment, PlayerEquipmentItem][]),
         communityBuffMap: new Map<CommunityBuff, CommunityBuffItem>(Object.entries(item.communityBuffMap || {}) as [CommunityBuff, CommunityBuffItem][]),
-        achievementBuffMap: new Map<AchievementTier, AchievementBuffItem>(Object.entries(item.achievementBuffMap || {}) as [AchievementTier, AchievementBuffItem][])
+        achievementBuffMap: new Map<AchievementTier, AchievementBuffItem>(Object.entries(item.achievementBuffMap || {}) as [AchievementTier, AchievementBuffItem][]),
+        shrineBuffMap: new Map<ShrineType, ShrineBuffItem>(Object.entries(item.shrineBuffMap || {}) as [ShrineType, ShrineBuffItem][])
       }
       if (!actionConfig.seals?.length) {
         actionConfig.seals = extractLegacySealsFromActionConfigMap(actionConfig.actionConfigMap)

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import type { AchievementBuffItem, ActionConfig, ActionConfigItem, CommunityBuffItem, PlayerEquipmentItem } from "@/pinia/stores/player"
+import type { AchievementBuffItem, ActionConfig, ActionConfigItem, CommunityBuffItem, PlayerEquipmentItem, ShrineBuffItem, ShrineType } from "@/pinia/stores/player"
 import type { AchievementTier, Action, CommunityBuff, Equipment, ItemDetail } from "~/game"
 import ItemIcon from "@@/components/ItemIcon/index.vue"
 import { Plus } from "@element-plus/icons-vue"
+import { h } from "vue"
 import { ElMessageBox } from "element-plus"
 import { getAchievementTierDetailOf, getCommunityBuffDetailOf, getPersonalBuffDetailOf } from "@/common/apis/game"
+import { useGameStore } from "@/pinia/stores/game"
 import { getEquipmentListOf, getSealList, getSpecialEquipmentListOf, getTeaListOf, getToolListOf, setActionConfigApi } from "@/common/apis/player"
 import { useTheme } from "@/common/composables/useTheme"
-import { DEFAULT_ACHIEVEMENT_BUFF_LIST, DEFAULT_COMMUNITY_BUFF_LIST, DEFAULT_SEPCIAL_EQUIPMENT_LIST } from "@/common/config"
+import { DEFAULT_ACHIEVEMENT_BUFF_LIST, DEFAULT_COMMUNITY_BUFF_LIST, DEFAULT_SEPCIAL_EQUIPMENT_LIST, DEFAULT_SHRINE_LIST, SHRINE_CONFIG } from "@/common/config"
 import { getTrans } from "@/locales"
 import { ACHIEVEMENT_TIER_LIST, ACTION_LIST } from "@/pinia/stores/game"
 import { defaultActionConfig, usePlayerStore } from "@/pinia/stores/player"
@@ -52,6 +54,7 @@ const actionList = ref<ActionConfigItem[]>([])
 const specialList = ref<PlayerEquipmentItem[]>([])
 const communityBuffList = ref<CommunityBuffItem[]>([])
 const achievementBuffList = ref<AchievementBuffItem[]>([])
+const shrineList = ref<ShrineBuffItem[]>([])
 const sealList = ref<ReturnType<typeof getSealList>>([])
 const seals = ref<string[]>([])
 const name = ref("")
@@ -92,6 +95,12 @@ function onDialog(config: ActionConfig, index: number) {
     }
   }))
 
+  shrineList.value = structuredClone(DEFAULT_SHRINE_LIST.map((buff) => {
+    return {
+      ...toRaw(config.shrineBuffMap.get(buff.type) ?? defaultConfig.shrineBuffMap.get(buff.type)!)
+    }
+  }))
+
   sealList.value = getSealList()
   seals.value = Array.isArray(config.seals)
     ? [...config.seals]
@@ -124,6 +133,7 @@ function constructActionConfig() {
     specialEquimentMap: new Map<Equipment, PlayerEquipmentItem>(),
     communityBuffMap: new Map<CommunityBuff, CommunityBuffItem>(),
     achievementBuffMap: new Map<AchievementTier, AchievementBuffItem>(),
+    shrineBuffMap: new Map<ShrineType, ShrineBuffItem>(),
     seals: [...seals.value],
     name: name.value,
     color: color.value
@@ -143,6 +153,10 @@ function constructActionConfig() {
 
   for (const item of achievementBuffList.value) {
     config.achievementBuffMap.set(item.type, toRaw(item))
+  }
+
+  for (const item of shrineList.value) {
+    config.shrineBuffMap.set(item.type, toRaw(item))
   }
 
   return config
@@ -342,7 +356,8 @@ function onImport() {
         actionConfigMap: new Map<Action, ActionConfigItem>(Object.entries(obj.actionConfigMap) as [Action, ActionConfigItem][]),
         specialEquimentMap: new Map<Equipment, PlayerEquipmentItem>(Object.entries(obj.specialEquimentMap) as [Equipment, PlayerEquipmentItem][]),
         communityBuffMap: new Map<CommunityBuff, CommunityBuffItem>(Object.entries(obj.communityBuffMap) as [CommunityBuff, CommunityBuffItem][]),
-        achievementBuffMap: normalizeAchievementBuffMap(obj.achievementBuffMap)
+        achievementBuffMap: normalizeAchievementBuffMap(obj.achievementBuffMap),
+        shrineBuffMap: new Map(Object.entries(obj.shrineBuffMap || {}) as [ShrineType, ShrineBuffItem][])
       }
       onDialog(config, playerStore.presets.length)
     } catch (e) {
@@ -364,7 +379,8 @@ function onExport() {
     actionConfigMap: Object.fromEntries(config.actionConfigMap.entries()),
     specialEquimentMap: Object.fromEntries(config.specialEquimentMap.entries()),
     communityBuffMap: Object.fromEntries(config.communityBuffMap.entries()),
-    achievementBuffMap: Object.fromEntries(config.achievementBuffMap.entries())
+    achievementBuffMap: Object.fromEntries(config.achievementBuffMap.entries()),
+    shrineBuffMap: Object.fromEntries(config.shrineBuffMap.entries())
   })
   navigator.clipboard.writeText(json).then(() => {
     ElMessage.success(t("已复制到剪贴板"))
@@ -372,6 +388,423 @@ function onExport() {
     ElMessage.error(t("复制失败，请检查浏览器权限设置"))
   })
 }
+
+// 战斗模拟器数据导入
+const HOUSE_ROOM_TO_ACTION: Record<string, Action> = {
+  dairy_barn: "milking",
+  garden: "foraging",
+  log_shed: "woodcutting",
+  forge: "cheesesmithing",
+  workshop: "crafting",
+  sewing_parlor: "tailoring",
+  kitchen: "cooking",
+  brewery: "brewing",
+  laboratory: "alchemy"
+}
+
+// 完整数据导入（战斗模拟器 / Milkonomy Exporter 两种格式）
+const SKILL_HRID_TO_ACTION: Record<string, Action> = {
+  "/skills/milking": "milking",
+  "/skills/foraging": "foraging",
+  "/skills/woodcutting": "woodcutting",
+  "/skills/cheesesmithing": "cheesesmithing",
+  "/skills/crafting": "crafting",
+  "/skills/tailoring": "tailoring",
+  "/skills/cooking": "cooking",
+  "/skills/brewing": "brewing",
+  "/skills/alchemy": "alchemy",
+  "/skills/enhancing": "enhancing"
+}
+
+const COMMUNITY_BUFF_HRID_TO_TYPE: Record<string, CommunityBuff> = {
+  "/community_buff_types/experience": "experience",
+  "/community_buff_types/gathering_quantity": "gathering_quantity",
+  "/community_buff_types/production_efficiency": "production_efficiency",
+  "/community_buff_types/enhancing_speed": "enhancing_speed"
+}
+
+// 检查装备是否对某个技能生效
+function doesEquipmentApply(itemHrid: string | undefined, action: Action): boolean {
+  if (!itemHrid) return false
+  const gd = useGameStore().gameData
+  if (!gd) return true // 数据未加载时放行，避免影响导入
+  const item = gd.itemDetailMap[itemHrid]
+  if (!item?.equipmentDetail?.noncombatStats) return false
+  return Object.keys(item.equipmentDetail.noncombatStats).some(key => key.includes(action))
+}
+
+function onImportBattleSim() {
+  let textareaValue = ""
+  let shouldMerge = false
+  let mergeTargetIndex = playerStore.presetIndex
+
+  var presetOptions = playerStore.presets.map(function(p, i) {
+    return h("option", { value: String(i), selected: i === mergeTargetIndex }, p.name || ("预设 " + (i + 1)))
+  })
+
+  const msgVNode = h("div", { style: "display:flex;flex-direction:column;gap:8px;width:100%" }, [
+    h("span", { style: "font-size:14px" }, t("请粘贴导出的JSON数据")),
+    h("textarea", {
+      style: "width:100%;min-height:130px;max-height:170px;border:1px solid var(--el-border-color,#dcdfe6);border-radius:4px;padding:8px;font-size:13px;resize:vertical;background:var(--el-fill-color-blank,#fff);color:var(--el-text-color-primary,#303133);font-family:monospace;box-sizing:border-box",
+      placeholder: '{"version":1,...}',
+      onInput: (e: Event) => { textareaValue = (e.target as HTMLTextAreaElement).value }
+    }),
+    h("div", { style: "display:flex;align-items:center;gap:4px" }, [
+      h("a", {
+        href: "https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter",
+        target: "_blank",
+        style: "font-size:12px;color:var(--el-color-primary,#409eff);text-decoration:none;white-space:nowrap"
+      }, t("Milkonomy Data Exporter 脚本安装")),
+      h("span", { style: "font-size:12px;color:var(--el-text-color-secondary,#909399);white-space:nowrap" }, " : " + t("快速复制生活数据"))
+    ]),
+    h("div", { style: "display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap" }, [
+      h("input", {
+        type: "checkbox",
+        id: "import-merge-check",
+        style: "cursor:pointer;accent-color:#16ab1b",
+        onChange: (e: Event) => { shouldMerge = (e.target as HTMLInputElement).checked }
+      }),
+      h("label", {
+        for: "import-merge-check",
+        style: "cursor:pointer;font-size:13px;color:var(--el-text-color-regular);white-space:nowrap"
+      }, t("数据升级")),
+      h("select", {
+        style: "border:1px solid var(--el-border-color,#dcdfe6);border-radius:4px;padding:2px 6px;font-size:13px;background:#222;color:#eee;max-width:160px",
+        onChange: (e: Event) => { mergeTargetIndex = Number((e.target as HTMLSelectElement).value) }
+      }, presetOptions),
+      h("span", {
+        style: "color:var(--el-text-color-secondary,#909399);font-size:12px;cursor:help",
+        title: t("与选中预设对比，取两者最高等级（装备/技能/房子/神龛）。社区Buff使用最新数据。不勾选则创建新预设。")
+      }, "ⓘ"),
+    ]),
+  ])
+
+  ElMessageBox({
+    title: t("导入生活数据"),
+    message: msgVNode,
+    showCancelButton: true,
+    confirmButtonText: t("确定"),
+    cancelButtonText: t("取消"),
+    customClass: "import-data-dialog",
+    beforeClose: (action: string, _instance: any, done: () => void) => {
+      if (action === "confirm") {
+        const value = textareaValue.trim()
+        if (!value) {
+          ElMessage.warning(t("请输入数据"))
+          return
+        }
+        try { JSON.parse(value) } catch {
+          ElMessage.error(t("请输入正确的JSON格式"))
+          return
+        }
+        done()
+        processImportData(value, shouldMerge, shouldMerge ? mergeTargetIndex : undefined)
+        return
+      }
+      done()
+    }
+  }).catch(() => {})
+}
+
+function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetIndex?: number) {
+  try {
+    const data = JSON.parse(jsonStr)
+      const defaultConfig = defaultActionConfig("", "")
+      let actionConfigMap: Map<Action, ActionConfigItem>
+      let useDefaults = true
+      let name: string
+      let color: string
+      let communityBuffMap = new Map(defaultConfig.communityBuffMap)
+      let shrineBuffMap = new Map(defaultConfig.shrineBuffMap)
+
+      // ====== 构建装备映射（两种格式共用） ======
+      const equipMap: Record<string, { itemHrid: string; enhancementLevel: number }> = {}
+
+      // ====== 格式检测 ======
+      if (data.skills && data.version === 1) {
+        // ---- Milkonomy Exporter 格式（完整数据） ----
+        name = data.name || t("完整导入")
+        color = "#16ab1b"
+        useDefaults = false
+
+        for (const [locHrid, eq] of Object.entries(data.equipment || {})) {
+          const loc = (locHrid as string).split("/").pop()
+          const e = eq as any
+          if (loc) equipMap[loc] = { itemHrid: e.hrid || "", enhancementLevel: e.enhanceLevel || 0 }
+        }
+
+        // 技能等级映射
+        const skillLevels: Partial<Record<Action, number>> = {}
+        for (const [skillHrid, level] of Object.entries(data.skills || {})) {
+          const action = SKILL_HRID_TO_ACTION[skillHrid as string]
+          if (action && typeof level === "number") skillLevels[action] = level
+        }
+
+        // 房子映射
+        const houseLevels: Partial<Record<Action, number>> = {}
+        for (const [roomHrid, level] of Object.entries(data.houses || {})) {
+          const room = (roomHrid as string).split("/").pop()
+          const action = HOUSE_ROOM_TO_ACTION[room!]
+          if (action && typeof level === "number") houseLevels[action] = level as number
+        }
+
+        // 社区Buff
+        communityBuffMap = new Map<CommunityBuff, CommunityBuffItem>()
+        for (const [buffHrid, level] of Object.entries(data.communityBuffs || {})) {
+          const type = COMMUNITY_BUFF_HRID_TO_TYPE[buffHrid as string]
+          if (type && typeof level === "number") {
+            const existing = (defaultConfig.communityBuffMap.get(type)!)
+            communityBuffMap.set(type, {
+              type,
+              hrid: existing.hrid,
+              level: level as number
+            })
+          }
+        }
+
+        // 神龛（映射游戏 guild shrine 名称 → Milkonomy 类型）
+        const GUILD_SHRINE_MAP: Record<string, ShrineType> = {
+          force: "power", tempo: "rhythm", spirit: "spirit", rare: "rare", scholar: "scholar"
+        }
+        shrineBuffMap = new Map<ShrineType, ShrineBuffItem>()
+        for (const [shrineName, level] of Object.entries(data.shrines || {})) {
+          const mapped = GUILD_SHRINE_MAP[shrineName as string] || shrineName
+          const validTypes = ["power", "rhythm", "spirit", "rare", "scholar"]
+          if (validTypes.includes(mapped) && typeof level === "number") {
+            shrineBuffMap.set(mapped as ShrineType, {
+              type: mapped as ShrineType,
+              level: level as number
+            })
+          }
+        }
+
+        // 构建 action config
+        actionConfigMap = new Map<Action, ActionConfigItem>()
+        for (const action of ACTION_LIST) {
+          const defaultItem = defaultConfig.actionConfigMap.get(action)!
+          const toolLoc = `${action}_tool`
+          const toolData = equipMap[toolLoc]
+          const bodyData = equipMap["body"]
+          const legsData = equipMap["legs"]
+          const charmData = equipMap["charm"]
+
+          actionConfigMap.set(action, {
+            action,
+            playerLevel: skillLevels[action] ?? defaultItem.playerLevel,
+            tool: {
+              type: `${action}_tool`,
+              hrid: toolData?.itemHrid ?? (useDefaults ? defaultItem.tool.hrid : undefined),
+              enhanceLevel: toolData?.enhancementLevel ?? (useDefaults ? defaultItem.tool.enhanceLevel : undefined)
+            },
+            body: {
+              type: "body",
+              hrid: bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.itemHrid : (useDefaults ? defaultItem.body.hrid : undefined),
+              enhanceLevel: bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.enhancementLevel : (useDefaults ? defaultItem.body.enhanceLevel : undefined)
+            },
+            legs: {
+              type: "legs",
+              hrid: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.itemHrid : (useDefaults ? defaultItem.legs.hrid : undefined),
+              enhanceLevel: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.enhancementLevel : (useDefaults ? defaultItem.legs.enhanceLevel : undefined)
+            },
+            back: { ...defaultItem.back },
+            charm: {
+              type: "charm",
+              hrid: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.itemHrid : (useDefaults ? defaultItem.charm.hrid : undefined),
+              enhanceLevel: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.enhancementLevel : (useDefaults ? defaultItem.charm.enhanceLevel : undefined)
+            },
+            houseLevel: houseLevels[action] ?? defaultItem.houseLevel,
+            tea: structuredClone(defaultItem.tea)
+          })
+        }
+      } else if (data.player?.equipment) {
+        // ---- 战斗模拟器格式（旧版兼容） ----
+        name = t("战斗导入")
+        color = "#ff4500"
+        useDefaults = true
+
+        for (const eq of data.player.equipment) {
+          const loc = eq.itemLocationHrid?.split("/").pop()
+          if (loc) equipMap[loc] = { itemHrid: eq.itemHrid, enhancementLevel: eq.enhancementLevel || 0 }
+        }
+
+        const playerLevel = Math.max(
+          data.player.magicLevel || 1, data.player.defenseLevel || 1,
+          data.player.intelligenceLevel || 1, data.player.meleeLevel || 1,
+          data.player.rangedLevel || 1, data.player.attackLevel || 1,
+          data.player.staminaLevel || 1
+        )
+
+        const houseLevels: Partial<Record<Action, number>> = {}
+        if (data.houseRooms) {
+          for (const [roomHrid, level] of Object.entries(data.houseRooms)) {
+            const room = (roomHrid as string).split("/").pop()
+            const action = HOUSE_ROOM_TO_ACTION[room!]
+            if (action && typeof level === "number") houseLevels[action] = level as number
+          }
+        }
+
+        actionConfigMap = new Map<Action, ActionConfigItem>()
+        for (const action of ACTION_LIST) {
+          const defaultItem = defaultConfig.actionConfigMap.get(action)!
+          const toolLoc = `${action}_tool`
+          const toolData = equipMap[toolLoc]
+          const bodyData = equipMap["body"]
+          const legsData = equipMap["legs"]
+          const charmData = equipMap["charm"]
+
+          actionConfigMap.set(action, {
+            action,
+            playerLevel,
+            tool: {
+              type: `${action}_tool`,
+              hrid: toolData?.itemHrid ?? (useDefaults ? defaultItem.tool.hrid : undefined),
+              enhanceLevel: toolData?.enhancementLevel ?? (useDefaults ? defaultItem.tool.enhanceLevel : undefined)
+            },
+            body: {
+              type: "body",
+              hrid: bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.itemHrid : (useDefaults ? defaultItem.body.hrid : undefined),
+              enhanceLevel: bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.enhancementLevel : (useDefaults ? defaultItem.body.enhanceLevel : undefined)
+            },
+            legs: {
+              type: "legs",
+              hrid: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.itemHrid : (useDefaults ? defaultItem.legs.hrid : undefined),
+              enhanceLevel: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.enhancementLevel : (useDefaults ? defaultItem.legs.enhanceLevel : undefined)
+            },
+            back: { ...defaultItem.back },
+            charm: {
+              type: "charm",
+              hrid: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.itemHrid : (useDefaults ? defaultItem.charm.hrid : undefined),
+              enhanceLevel: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.enhancementLevel : (useDefaults ? defaultItem.charm.enhanceLevel : undefined)
+            },
+            houseLevel: houseLevels[action] ?? defaultItem.houseLevel,
+            tea: structuredClone(defaultItem.tea)
+          })
+        }
+      } else {
+        throw new Error("无法识别的数据格式")
+      }
+
+      // 计算成就 Buff（根据已完成的成就数估算 Tier）
+      const achievementBuffMap = new Map<AchievementTier, AchievementBuffItem>(defaultConfig.achievementBuffMap)
+      if (data.achievementTierMap && typeof data.achievementTierMap === "object") {
+        // 如果有 tier map，直接读取
+        for (const [tierHrid, unlocked] of Object.entries(data.achievementTierMap)) {
+          const tier = (tierHrid as string).split("/").pop()
+          if (tier && (ACHIEVEMENT_TIER_LIST as readonly string[]).includes(tier)) {
+            achievementBuffMap.set(tier as AchievementTier, {
+              type: tier as AchievementTier,
+              enabled: Boolean(unlocked)
+            })
+          }
+        }
+      } else if (data.achievements) {
+        // 根据成就点数估算
+        const points = typeof data.achievementPoints === "number" ? data.achievementPoints
+          : Object.values(data.achievements).filter(v => v === true).length * 10
+        const tiers: AchievementTier[] = ["beginner", "novice", "adept", "veteran", "elite", "champion"]
+        const thresholds = [10, 25, 50, 100, 200, 400]
+        for (let i = 0; i < tiers.length; i++) {
+          achievementBuffMap.set(tiers[i], {
+            type: tiers[i],
+            enabled: points >= thresholds[i]
+          })
+        }
+      }
+
+      // 填充特殊装备（头、脚、手、戒指、项链、耳环、副手、背包）
+      const specialEquipMap = new Map<Equipment, PlayerEquipmentItem>(defaultConfig.specialEquimentMap)
+      const _specialSlotMap: Record<string, Equipment> = {
+        head: "head", feet: "feet", hands: "hands",
+        ring: "ring", neck: "neck", earrings: "earrings",
+        back: "back", off_hand: "off_hand", pouch: "pouch"
+      }
+      for (const [loc, equipType] of Object.entries(_specialSlotMap)) {
+        const ed = equipMap[loc]
+        if (ed?.itemHrid) {
+          specialEquipMap.set(equipType, {
+            type: equipType,
+            hrid: ed.itemHrid,
+            enhanceLevel: ed.enhancementLevel
+          })
+        }
+      }
+
+      const config: ActionConfig = {
+        name,
+        color,
+        seals: [],
+        actionConfigMap,
+        specialEquimentMap: specialEquipMap,
+        communityBuffMap,
+        achievementBuffMap,
+        shrineBuffMap
+      }
+
+      // 勾选「数据升级」则与选中预设合并取优
+      let presetIndex = playerStore.presets.length
+      if (shouldMerge && mergeTargetIndex !== undefined) {
+        const existing = playerStore.presets[mergeTargetIndex]
+
+        // 合并各技能配置：取最高等级
+        for (const [action, newItem] of config.actionConfigMap) {
+          const oldItem = existing.actionConfigMap.get(action)
+          if (!oldItem) continue
+          newItem.playerLevel = Math.max(newItem.playerLevel, oldItem.playerLevel)
+          newItem.houseLevel = Math.max(newItem.houseLevel, oldItem.houseLevel)
+          if ((oldItem.tool.enhanceLevel ?? 0) > (newItem.tool.enhanceLevel ?? 0)) {
+            newItem.tool.enhanceLevel = oldItem.tool.enhanceLevel
+            newItem.tool.hrid = oldItem.tool.hrid
+          }
+          if ((oldItem.body.enhanceLevel ?? 0) > (newItem.body.enhanceLevel ?? 0)) {
+            newItem.body.enhanceLevel = oldItem.body.enhanceLevel
+            newItem.body.hrid = oldItem.body.hrid
+          }
+          if ((oldItem.legs.enhanceLevel ?? 0) > (newItem.legs.enhanceLevel ?? 0)) {
+            newItem.legs.enhanceLevel = oldItem.legs.enhanceLevel
+            newItem.legs.hrid = oldItem.legs.hrid
+          }
+          if ((oldItem.charm.enhanceLevel ?? 0) > (newItem.charm.enhanceLevel ?? 0)) {
+            newItem.charm.enhanceLevel = oldItem.charm.enhanceLevel
+            newItem.charm.hrid = oldItem.charm.hrid
+          }
+        }
+
+        // 合并特殊装备
+        for (const [type, newEq] of config.specialEquimentMap) {
+          const oldEq = existing.specialEquimentMap.get(type)
+          if (!oldEq) continue
+          if ((oldEq.enhanceLevel ?? 0) > (newEq.enhanceLevel ?? 0)) {
+            newEq.enhanceLevel = oldEq.enhanceLevel
+            newEq.hrid = oldEq.hrid
+          }
+        }
+
+        // 合并神龛
+        for (const [type, newShrine] of config.shrineBuffMap) {
+          const oldShrine = existing.shrineBuffMap.get(type)
+          if (oldShrine) newShrine.level = Math.max(newShrine.level, oldShrine.level)
+        }
+
+        // 成就Buff：任一有则启用
+        for (const [tier, newAch] of config.achievementBuffMap) {
+          const oldAch = existing.achievementBuffMap.get(tier)
+          if (oldAch) newAch.enabled = newAch.enabled || oldAch.enabled
+        }
+
+        // 保留原预设的颜色和封印
+        config.color = existing.color
+        config.seals = existing.seals
+        presetIndex = mergeTargetIndex!
+      }
+
+      onDialog(config, presetIndex)
+      ElMessage.success(t("已导入生活数据，请检查并保存"))
+    } catch (e) {
+      console.error(e)
+      ElMessage.error(t("无效的数据格式"))
+    }
+}
+
 
 function isSealEnabled(hrid: string) {
   return seals.value.includes(hrid)
@@ -462,7 +895,6 @@ function getAchievementEffect(type: AchievementTier) {
         {{ preset.name?.substring(0, 1) }}
       </el-button>
       <el-button
-        v-if="!playerStore.isOverflow()"
         class="ml-1 w-24px" size="small" :icon="Plus" plain
         @click="onAdd"
       />
@@ -485,8 +917,7 @@ function getAchievementEffect(type: AchievementTier) {
     </template>
   </div>
   <el-dialog v-model="visible" :show-close="false" width="80%" @close="onDialogClose">
-    <el-row :gutter="20" class="mt-[-30px]">
-      <el-col :xs="24" :sm="24" :md="24" :lg="24" :xl="16">
+    <div class="mt-[-30px]">
         <el-card class="mt-5">
           <template #header>
             <div class="flex flex-wrap items-baseline ">
@@ -517,6 +948,10 @@ function getAchievementEffect(type: AchievementTier) {
               <el-button type="success" plain class="ml-4" @click="onExport">
                 {{ t('导出') }}
               </el-button>
+              <span style="width:1px;height:20px;background:var(--el-border-color);margin:0 8px;display:inline-block;vertical-align:middle"></span>
+              <el-button type="warning" plain class="ml-2" @click="onImportBattleSim">
+                {{ t('快速导入数据') }}
+              </el-button>
             </div>
           </template>
           <el-table :data="actionList.filter(item => actions ? actions.includes(item.action) : true)">
@@ -542,7 +977,7 @@ function getAchievementEffect(type: AchievementTier) {
             </el-table-column>
             <el-table-column :label="t('工具')" align="center" min-width="105">
               <template #default="{ row }">
-                <el-select style="width:80px" v-model="row.tool.hrid" :placeholder="t('无')" clearable>
+                <el-select style="width:80px" v-model="row.tool.hrid" :placeholder="t('工具')" clearable>
                   <el-option v-for="item in getToolListOf(row.action)" :key="item.hrid" :label="item.name" :value="item.hrid">
                     <div style="display:flex;align-items:center;gap:10px;">
                       <ItemIcon :hrid="item.hrid" />
@@ -559,7 +994,7 @@ function getAchievementEffect(type: AchievementTier) {
             </el-table-column>
             <el-table-column :label="t('身体')" align="center" min-width="105">
               <template #default="{ row }">
-                <el-select style="width:80px" v-model="row.body.hrid" :placeholder="t('无')" clearable>
+                <el-select style="width:80px" v-model="row.body.hrid" :placeholder="t('身体')" clearable>
                   <el-option v-for="item in getEquipmentListOf(row.action, 'body')" :key="item.hrid" :label="item.name" :value="item.hrid">
                     <div style="display:flex;align-items:center;gap:10px;">
                       <ItemIcon :hrid="item.hrid" />
@@ -576,7 +1011,7 @@ function getAchievementEffect(type: AchievementTier) {
             </el-table-column>
             <el-table-column :label="t('腿部')" align="center" min-width="105">
               <template #default="{ row }">
-                <el-select style="width:80px" v-model="row.legs.hrid" :placeholder="t('无')" clearable>
+                <el-select style="width:80px" v-model="row.legs.hrid" :placeholder="t('腿部')" clearable>
                   <el-option v-for="item in getEquipmentListOf(row.action, 'legs')" :key="item.hrid" :label="item.name" :value="item.hrid">
                     <div style="display:flex;align-items:center;gap:10px;">
                       <ItemIcon :hrid="item.hrid" />
@@ -593,7 +1028,7 @@ function getAchievementEffect(type: AchievementTier) {
             </el-table-column>
             <el-table-column :label="t('背部')" align="center" min-width="105">
               <template #default="{ row }">
-                <el-select style="width:80px" v-model="row.back.hrid" :placeholder="t('无')" clearable>
+                <el-select style="width:80px" v-model="row.back.hrid" :placeholder="t('背部')" clearable>
                   <el-option v-for="item in getBackEquipmentListOf(row.action)" :key="item.hrid" :label="item.name" :value="item.hrid">
                     <div style="display:flex;align-items:center;gap:10px;">
                       <ItemIcon :hrid="item.hrid" />
@@ -610,7 +1045,7 @@ function getAchievementEffect(type: AchievementTier) {
             </el-table-column>
             <el-table-column :label="t('护符')" align="center" min-width="105">
               <template #default="{ row }">
-                <el-select style="width:80px" v-model="row.charm.hrid" :placeholder="t('无')" clearable>
+                <el-select style="width:80px" v-model="row.charm.hrid" :placeholder="t('护符')" clearable>
                   <el-option v-for="item in getEquipmentListOf(row.action, 'charm').sort((a, b) => a.itemLevel - b.itemLevel)" :key="item.hrid" :label="item.name" :value="item.hrid">
                     <div style="display:flex;align-items:center;gap:10px;">
                       <ItemIcon :hrid="item.hrid" />
@@ -636,100 +1071,109 @@ function getAchievementEffect(type: AchievementTier) {
             </el-table-column>
           </el-table>
         </el-card>
-      </el-col>
 
-      <el-col :xs="24" :sm="24" :md="24" :lg="24" :xl="8">
-        <el-row :gutter="20">
-          <el-col :xs="24" :sm="24" :md="14" :lg="12" :xl="24">
-            <el-card class="mt-5">
-              <template #header>
-                <div style="line-height: 32px;">
-                  {{ t('其他') }}
-                </div>
-              </template>
-              <el-table :data="specialList.filter(item => equipments ? equipments.includes(item.type) : true)">
-                <el-table-column prop="type" :label="t('部位')" width="120">
-                  <template #default="{ row }">
-                    {{ t(row.type.replace(/_/g, ' ').replace(/\b\w+\b/g, (word:any) => word.substring(0, 1).toUpperCase() + word.substring(1))) }}
-                  </template>
-                </el-table-column>
-                <el-table-column :label="t('装备')">
-                  <template #default="{ row }">
-                    <el-select style="width:80px" v-model="row.hrid" :placeholder="t('无')" clearable>
-                      <el-option v-for="item in getSpecialEquipmentListOf(row.type)" :key="item.hrid" :label="item.name" :value="item.hrid">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                          <ItemIcon :hrid="item.hrid" />
-                          <div> {{ item.name }} </div>
-                        </div>
-                      </el-option>
-                      <template #label>
-                        <ItemIcon style="margin-top: 4px;" :hrid="row.hrid" />
-                      </template>
-                    </el-select>
-                    &nbsp;+&nbsp;
-                    <el-input-number v-model="row.enhanceLevel" :min="0" :max="20" style="width: 60px" :controls="false" />
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="10" :lg="12" :xl="24">
-            <el-card class="mt-5">
-              <template #header>
-                <div style="line-height: 32px;">
-                  {{ t('其他Buff') }}
-                </div>
-              </template>
-              <div class="buff-title">
+        <el-card class="mt-5">
+          <template #header>
+            <div style="line-height: 32px;">
+              {{ t('特殊装备') }}
+            </div>
+          </template>
+          <div class="buff-tofu-grid special-equip-grid">
+            <div class="buff-tofu" v-for="row in specialList.filter(item => equipments ? equipments.includes(item.type) : true)" :key="`special-${row.type}`">
+              <div class="buff-tofu-head" style="gap:6px">
+                <ItemIcon v-if="row.hrid" :hrid="row.hrid" style="flex-shrink:0" />
+                <span>{{ t(row.type.replace(/_/g, ' ').replace(/\b\w+\b/g, (word:any) => word.substring(0, 1).toUpperCase() + word.substring(1))) }}</span>
+              </div>
+              <el-select style="width:100%" v-model="row.hrid" :placeholder="t(row.type.replace(/_/g, ' ').replace(/\\b\\w+\\b/g, (word:any) => word.substring(0, 1).toUpperCase() + word.substring(1)))" clearable>
+                <el-option v-for="item in getSpecialEquipmentListOf(row.type)" :key="item.hrid" :label="getTrans(item.name)" :value="item.hrid">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <ItemIcon :hrid="item.hrid" />
+                    <div> {{ getTrans(item.name) }} </div>
+                  </div>
+                </el-option>
+              </el-select>
+              <el-input-number v-model="row.enhanceLevel" :min="0" :max="20" style="width: 100%" :controls="false" />
+            </div>
+          </div>
+        </el-card>
+
+        <el-card class="mt-5">
+            <template #header>
+              <div style="line-height: 32px;">
                 {{ t('封印') }}
               </div>
-              <div class="buff-tofu-grid">
-                <div class="buff-tofu" v-for="item in sealList" :key="`seal-${item.hrid}`">
-                  <div class="buff-tofu-head">
-                    <ItemIcon :hrid="item.hrid" />
-                    <span>{{ getTrans(item.name) }}</span>
-                  </div>
-                  <div class="buff-effect">
-                    {{ getSealEffect(item) }}
-                  </div>
-                  <el-checkbox :model-value="isSealEnabled(item.hrid)" @change="(value) => onSealToggle(item.hrid, Boolean(value))">
-                    {{ t('启用') }}
-                  </el-checkbox>
+            </template>
+            <div class="buff-tofu-grid seal-grid">
+              <div class="buff-tofu" v-for="item in sealList" :key="`seal-${item.hrid}`">
+                <div class="buff-tofu-head">
+                  <ItemIcon :hrid="item.hrid" />
+                  <span>{{ getTrans(item.name) }}</span>
                 </div>
+                <div class="buff-effect">
+                  {{ getSealEffect(item) }}
+                </div>
+                <el-checkbox :model-value="isSealEnabled(item.hrid)" @change="(value) => onSealToggle(item.hrid, Boolean(value))">
+                  {{ t('启用') }}
+                </el-checkbox>
               </div>
+            </div>
+          </el-card>
 
-              <div class="buff-title mt-3">
+          <el-card class="mt-5">
+            <template #header>
+              <div style="line-height: 32px;">
                 {{ t('社区Buff') }}
               </div>
-              <div class="buff-tofu-grid">
-                <div class="buff-tofu" v-for="row in communityBuffList.filter(item => communityBuffs ? communityBuffs.includes(item.type) : true)" :key="`community-${row.type}`">
-                  <div class="buff-tofu-head">
-                    <ItemIcon :hrid="getCommunityBuffDetailOf(row.hrid!).buff.typeHrid" :width="22" :height="22" />
-                    <span>{{ t('等级') }}</span>
-                  </div>
-                  <el-input-number v-model="row.level" :min="0" :max="20" style="width: 90px" :controls="false" />
+            </template>
+            <div class="buff-tofu-grid">
+              <div class="buff-tofu" v-for="row in communityBuffList.filter(item => communityBuffs ? communityBuffs.includes(item.type) : true)" :key="`community-${row.type}`">
+                <div class="buff-tofu-head">
+                  <ItemIcon :hrid="getCommunityBuffDetailOf(row.hrid!).buff.typeHrid" :width="22" :height="22" />
+                  <span>{{ t('等级') }}</span>
                 </div>
+                <el-input-number v-model="row.level" :min="0" :max="20" style="width: 90px" :controls="false" />
               </div>
+            </div>
+          </el-card>
 
-              <div class="buff-title mt-3">
+          <el-card class="mt-5">
+            <template #header>
+              <div style="line-height: 32px;">
                 {{ t('成就Buff') }}
               </div>
-              <div class="buff-tofu-grid">
-                <div class="buff-tofu" v-for="row in achievementBuffList.filter(item => achievementBuffs ? achievementBuffs.includes(item.type) : true)" :key="`achievement-${row.type}`">
-                  <div class="buff-tofu-head">
-                    <ItemIcon :hrid="getAchievementTierDetailOf(`/achievement_tiers/${row.type}`)?.buff.typeHrid" :width="22" :height="22" />
-                    <span>{{ getAchievementEffect(row.type) }}</span>
-                  </div>
-                  <el-checkbox v-model="row.enabled">
-                    {{ t('启用') }}
-                  </el-checkbox>
+            </template>
+            <div class="buff-tofu-grid">
+              <div class="buff-tofu" v-for="row in achievementBuffList.filter(item => achievementBuffs ? achievementBuffs.includes(item.type) : true)" :key="`achievement-${row.type}`">
+                <div class="buff-tofu-head">
+                  <ItemIcon :hrid="getAchievementTierDetailOf(`/achievement_tiers/${row.type}`)?.buff.typeHrid" :width="22" :height="22" />
+                  <span>{{ getAchievementEffect(row.type) }}</span>
                 </div>
+                <el-checkbox v-model="row.enabled">
+                  {{ t('启用') }}
+                </el-checkbox>
               </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </el-col>
-    </el-row>
+            </div>
+          </el-card>
+
+          <el-card class="mt-5">
+            <template #header>
+              <div style="line-height: 32px;">
+                {{ t('神龛') }}
+              </div>
+            </template>
+            <div class="buff-tofu-grid">
+              <div class="buff-tofu" v-for="row in shrineList" :key="`shrine-${row.type}`">
+                <div class="buff-tofu-head">
+                  <span>{{ SHRINE_CONFIG[row.type]?.name || row.type }}</span>
+                </div>
+                <div class="buff-effect">
+                  {{ SHRINE_CONFIG[row.type] ? `${SHRINE_CONFIG[row.type].label} +${(row.level * SHRINE_CONFIG[row.type].perLevel * 100).toFixed(1)}%` : '' }}
+                </div>
+                <el-input-number v-model="row.level" :min="0" :max="20" style="width: 90px" :controls="false" />
+              </div>
+            </div>
+          </el-card>
+    </div>
 
     <template #footer>
       <div style="text-align: center;">
@@ -855,8 +1299,53 @@ function getAchievementEffect(type: AchievementTier) {
   font-size: 13px;
 }
 
+/* 特殊装备图标居中 */
+.special-equip-grid :deep(.el-select__selected-item) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.special-equip-grid :deep(.el-select__placeholder) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .buff-effect {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.special-equip-grid .buff-tofu {
+  text-align: center;
+  align-items: center;
+}
+
+.seal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.seal-grid .buff-tofu {
+  flex: 1;
+  min-width: 140px;
+}
+
+.special-equip-grid :deep(.el-select__wrapper) {
+  justify-content: center;
+}
+</style>
+
+<style>
+.import-data-dialog {
+  width: 600px;
+}
+.import-data-dialog .el-message-box__message {
+  width: 100%;
+}
+.import-data-dialog textarea {
+  min-height: 130px !important;
+  max-height: 170px !important;
 }
 </style>

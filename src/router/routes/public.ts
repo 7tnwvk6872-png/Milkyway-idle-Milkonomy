@@ -76,7 +76,7 @@ export const publicRoutes: RouteRecordRaw[] = [
     component: Layouts,
     redirect: "/jungle",
     meta: {
-      title: t("打野工具"),
+      title: t("强化工具"),
       elIcon: "Compass"
     },
     children: [
@@ -85,7 +85,7 @@ export const publicRoutes: RouteRecordRaw[] = [
         component: () => import("@/pages/jungle/index.vue"),
         name: "Jungle",
         meta: {
-          title: t("打野工具"),
+          title: t("强化工具"),
           affix: false,
           elIcon: "Compass"
         }
@@ -129,6 +129,26 @@ export const publicRoutes: RouteRecordRaw[] = [
           affix: false,
           elIcon: "Compass"
         }
+      },
+      {
+        path: "enhanposer",
+        component: () => import("@/pages/enhanposer/index.vue"),
+        name: "Enhanposer",
+        meta: {
+          title: t("强化分解"),
+          affix: false,
+          elIcon: "Box"
+        }
+      },
+      {
+        path: "enhanposest",
+        component: () => import("@/pages/enhanposer/enhanposest.vue"),
+        name: "Enhanposest",
+        meta: {
+          title: t("超级强化分解"),
+          affix: false,
+          elIcon: "Box"
+        }
       }
     ]
   },
@@ -149,55 +169,4 @@ export const publicRoutes: RouteRecordRaw[] = [
       }
     ]
   },
-  {
-    path: "/",
-    component: Layouts,
-    redirect: "/enhanposer",
-    children: [
-      {
-        path: "enhanposer",
-        component: () => import("@/pages/enhanposer/index.vue"),
-        name: "Enhanposer",
-        meta: {
-          title: t("强化分解"),
-          affix: false,
-          svgIcon: "dashboard"
-        }
-      }
-    ]
-  },
-  {
-    path: "/",
-    component: Layouts,
-    redirect: "/valhalla",
-    children: [
-      {
-        path: "valhalla",
-        component: () => import("@/pages/valhalla/index.vue"),
-        name: "Valhalla",
-        meta: {
-          title: t("英灵殿"),
-          elIcon: "User",
-          affix: false
-        }
-      }
-    ]
-  },
-  {
-    path: "/",
-    component: Layouts,
-    redirect: "/burial",
-    children: [
-      {
-        path: "burial",
-        component: () => import("@/pages/burial/index.vue"),
-        name: "Burial",
-        meta: {
-          title: t("埋骨地"),
-          elIcon: "User",
-          affix: false
-        }
-      }
-    ]
-  }
 ]

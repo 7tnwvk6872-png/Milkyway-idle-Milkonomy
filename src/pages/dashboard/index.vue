@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type Calculator from "@/calculator"
 import { getLeaderboardDataApi } from "@@/apis/leaderboard"
-import { normalizeProject, supportsTierFilter, TIER_CHAINS } from "@@/apis/leaderboard/tierChains"
+import { isShopTier, normalizeProject, parseTierLevel, supportsTierFilter, TIER_CHAINS } from "@@/apis/leaderboard/tierChains"
 import ItemIcon from "@@/components/ItemIcon/index.vue"
 import { usePagination } from "@@/composables/usePagination"
 import { ArrowDown, Close, Delete, Edit, Plus, Search, Star, StarFilled, Warning } from "@element-plus/icons-vue"
@@ -410,8 +410,11 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
                 </el-form-item>
 
                 <el-form-item :label="t('起始材质')">
-                  <el-select v-model="ldSearchData.startTierLevel" :placeholder="t('不限')" style="width:90px" clearable @change="handleSearchLD">
-                    <el-option v-for="tier in tierOptions" :key="tier.itemLevel" :label="t(tier.label)" :value="tier.itemLevel" />
+                  <el-select v-model="ldSearchData.startTierLevel" :placeholder="t('不限')" style="width:120px" clearable @change="handleSearchLD">
+                    <template v-for="tier in tierOptions" :key="tier.itemLevel">
+                      <el-option :label="t(tier.label)" :value="tier.itemLevel" />
+                      <el-option v-if="tier.shopCost" :label="t(tier.label) + t('（商店）')" :value="tier.itemLevel + '_shop'" />
+                    </template>
                   </el-select>
                 </el-form-item>
 

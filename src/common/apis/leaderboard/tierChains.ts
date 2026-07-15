@@ -12,6 +12,19 @@
 export interface TierOption {
   itemLevel: number
   label: string
+  /** 商店购买价格（金币），存在表示该档位物品可在商店直接购买 */
+  shopCost?: number
+}
+
+/** 起始材质带商店标记的复合值，格式为 "itemLevel_shop" */
+export function isShopTier(value: string | number | undefined | null): boolean {
+  return typeof value === 'string' && value.endsWith('_shop')
+}
+export function parseTierLevel(value: string | number | undefined | null): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  const s = String(value).replace('_shop', '')
+  const n = Number(s)
+  return Number.isFinite(n) ? n : undefined
 }
 
 export interface TierChain {
@@ -27,7 +40,7 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
       label: "奶酪",
       tiers: [
         { itemLevel: 1, label: "奶酪" },
-        { itemLevel: 10, label: "翠绿奶酪" },
+        { itemLevel: 10, label: "翠绿奶酪", shopCost: 5000 },
         { itemLevel: 20, label: "蔚蓝奶酪" },
         { itemLevel: 35, label: "深紫奶酪" },
         { itemLevel: 50, label: "绛红奶酪" },
@@ -45,7 +58,7 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
       label: "木材",
       tiers: [
         { itemLevel: 1, label: "普通" },
-        { itemLevel: 10, label: "桦木" },
+        { itemLevel: 10, label: "桦木", shopCost: 5000 },
         { itemLevel: 20, label: "雪松" },
         { itemLevel: 35, label: "紫檀" },
         { itemLevel: 50, label: "银杏" },
