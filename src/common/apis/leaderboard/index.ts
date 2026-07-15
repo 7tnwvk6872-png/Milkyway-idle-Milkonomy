@@ -67,9 +67,12 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
   }
   profitList = handleVolume1hSearch(profitList, params)
 
-  // 排除装备：只保留原材料和多步制作链条，排除单步制造装备
+  // 排除装备：仅对制造/锻造/裁缝生效，保留多步链条，排除单步制造装备
   if (params.banEquipment) {
+    const equipmentActions = ['crafting', 'cheesesmithing', 'tailoring']
     profitList = profitList.filter((item: any) => {
+      // 非制造/锻造/裁缝的物品不受影响
+      if (!equipmentActions.includes(item.action)) return true
       const calcList = item.calculatorList
       // 多步 workflow（原材料链条）保留
       if (Array.isArray(calcList) && calcList.length >= 1) return true
