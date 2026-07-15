@@ -57,13 +57,13 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
       key: "wood",
       label: "木材",
       tiers: [
-        { itemLevel: 1, label: "普通" },
-        { itemLevel: 10, label: "桦木", shopCost: 5000 },
+        { itemLevel: 1, label: "木板" },
+        { itemLevel: 10, label: "白桦", shopCost: 5000 },
         { itemLevel: 20, label: "雪松" },
-        { itemLevel: 35, label: "紫檀" },
+        { itemLevel: 35, label: "紫心" },
         { itemLevel: 50, label: "银杏" },
         { itemLevel: 65, label: "红杉" },
-        { itemLevel: 80, label: "奥术" },
+        { itemLevel: 80, label: "神秘" },
         { itemLevel: 85, label: "Lv85" },
         { itemLevel: 90, label: "Lv90" },
         { itemLevel: 95, label: "Lv95" }
@@ -75,24 +75,24 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
       key: "leather",
       label: "皮革",
       tiers: [
-        { itemLevel: 1, label: "粗皮" },
-        { itemLevel: 15, label: "爬虫" },
-        { itemLevel: 35, label: "哥布林" },
-        { itemLevel: 55, label: "野兽" },
-        { itemLevel: 75, label: "暗影" },
+        { itemLevel: 1, label: "粗糙皮革" },
+        { itemLevel: 15, label: "爬行动物皮革" },
+        { itemLevel: 35, label: "哥布林皮革" },
+        { itemLevel: 55, label: "野兽皮革" },
+        { itemLevel: 75, label: "暗影皮革" },
         { itemLevel: 85, label: "狮鹫" },
-        { itemLevel: 95, label: "海妖/Lv95" }
+        { itemLevel: 95, label: "Lv95" }
       ]
     },
     {
       key: "fabric",
       label: "布料",
       tiers: [
-        { itemLevel: 1, label: "棉" },
-        { itemLevel: 15, label: "亚麻" },
-        { itemLevel: 35, label: "竹" },
+        { itemLevel: 1, label: "棉花布料" },
+        { itemLevel: 15, label: "亚麻布料" },
+        { itemLevel: 35, label: "竹子布料" },
         { itemLevel: 55, label: "丝绸" },
-        { itemLevel: 75, label: "辐光" },
+        { itemLevel: 75, label: "光辉布料" },
         { itemLevel: 90, label: "Lv90" },
         { itemLevel: 95, label: "Lv95" }
       ]

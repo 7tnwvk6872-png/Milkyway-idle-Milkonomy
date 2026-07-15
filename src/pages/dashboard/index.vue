@@ -12,6 +12,7 @@ import { addFavoriteApi, deleteFavoriteApi, getFavoriteDataApi } from "@/common/
 import { getPriceOf } from "@/common/apis/game"
 import { getActionConfigOf } from "@/common/apis/player"
 import { useMemory } from "@/common/composables/useMemory"
+import { useAnnouncement } from "@/common/composables/useAnnouncement"
 import { usePriceStatus } from "@/common/composables/usePriceStatus"
 import * as Format from "@/common/utils/format"
 import { useFavoriteStore } from "@/pinia/stores/favorite"
@@ -158,11 +159,14 @@ const ldSearchData = useMemory("dashboard-leaderboard-search-data", {
   banCharm: false,
   tierChainKey: "",
   startTierLevel: "",
-  endTierLevel: ""
+  endTierLevel: "",
+  pureOnly: false
 })
 
 const includeTax = useMemory("dashboard-include-tax", true)
 const crossStepBalance = useMemory("dashboard-cross-step-balance", false)
+
+const { visible: announceVisible, dismiss: announceDismiss } = useAnnouncement()
 
 const loadingLD = ref(false)
 
@@ -313,7 +317,7 @@ function setPrice(row: Calculator) {
   priceVisible.value = true
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // 逐级制作 / 起始材质
 const showTierFilter = computed(() => supportsTierFilter(ldSearchData.value.project))
@@ -324,7 +328,23 @@ const currentChain = computed(() => {
   const found = chains.find(c => c.key === ldSearchData.value.tierChainKey)
   return found || chains[0]
 })
-const tierOptions = computed(() => currentChain.value?.tiers || [])
+const tierOptions = computed(() => {
+  // "全部"模式下合并所有链的档位
+  if (!ldSearchData.value.tierChainKey) {
+    const allTiers: { itemLevel: number; label: string; shopCost?: number }[] = []
+    const seen = new Set<number>()
+    for (const chain of tierChains.value) {
+      for (const tier of chain.tiers) {
+        if (!seen.has(tier.itemLevel)) {
+          seen.add(tier.itemLevel)
+          allTiers.push(tier)
+        }
+      }
+    }
+    return allTiers
+  }
+  return currentChain.value?.tiers || []
+})
 
 function handleProjectChange() {
   ldSearchData.value.tierChainKey = ""
@@ -350,6 +370,65 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
 </script>
 
 <template>
+  <el-dialog v-model="announceVisible" :title="locale === 'en' ? 'Milkonomy v2.2.0 Update' : 'Milkonomy v2.2.0 更新'" width="560px" :close-on-click-modal="false" @close="announceDismiss">
+    <!-- 中文公告 -->
+    <div v-if="locale !== 'en'" style="line-height:2;font-size:14px">
+      <p style="font-weight:bold;margin-bottom:8px">一、一键导入数据脚本</p>
+      <p>1. 映射修复：护符、背部、身体、腿部及房屋的导入映射已修复，各部位装备均可正确录入。</p>
+      <p>2. 批量提取：仓库内高品质装备、身体、腿部、护符支持一次性全量导出，无需逐件操作。</p>
+      <p>3. 生活技能提取：适配一键提取生活等级脚本，无需手动逐项录入。</p>
+      <p style="margin-top:4px">一键导入数据脚本：<a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Greasy Fork</a></p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">二、利润网</p>
+      <p>1. 纯净火车：锻造、制造、裁缝新增开关，开启后仅保留基础材料制造链路，战斗掉落及精通之油、洞察之枝、专精之线不纳入计算。</p>
+      <p>2. 材质链区分：裁缝支持全部、布料、皮革三种模式独立切换，档位筛选仅在所选材质范围内生效。</p>
+      <p>3. 神龛导入：新增神龛数据导入与利润计算支持，补齐原版利润网的缺失模块。</p>
+      <p>4. 逐级制作：多步制作链路新增起始材质与终点档位设置按钮，支持自定义链条起止点。</p>
+      <p>5. 预设对比：支持同时加载两套预设方案，直观对比不同配置下的利润差异。</p>
+      <p>6. 加载优化：页面改为先渲染后加载数据，首次打开不再长时间白屏。</p>
+      <p>7. 档位修正：布料档位名称由 "辐光" 更正为 "光辉"。</p>
+      <p>8. 版本公告：每版本首次访问弹出更新说明，关闭后本版不再重复显示。</p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">三、打赏 & 反馈</p>
+      <p>1. 建议反馈：新增反馈页面，支持提交 Bug 报告和功能建议，数据直达维护者。</p>
+      <p>2. 新赞助者：感谢 Laulau01（¥28.88）和 Kong（¥30）的支持！</p>
+      <p style="color:#e6a23c">⚠ 请在打赏时留下您的游戏昵称，这很重要！！</p>
+      <p style="color:#e6a23c">⚠ 今天打赏的微信名"空"的朋友请来找我认领游戏名称，我暂且将您命名为 Kong。</p>
+
+      <p style="color:#909399;font-size:12px;margin-top:16px">每个版本首次打开弹出，关闭后不再重复显示</p>
+    </div>
+
+    <!-- English Announcement -->
+    <div v-else style="line-height:2;font-size:14px">
+      <p style="font-weight:bold;margin-bottom:8px">1. One-Click Data Script</p>
+      <p>1.1 Import mapping fixed: charms, back, body, legs and house imports now work correctly for all slots.</p>
+      <p>1.2 Bulk export: high-quality gear (body, legs, charms) can now be extracted in one batch from your warehouse.</p>
+      <p>1.3 Life skill sync: one-click life skill level extraction supported — no more manual entry.</p>
+      <p style="margin-top:4px">Script: <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Greasy Fork</a></p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">2. Profit Board</p>
+      <p>2.1 Pure Train: new toggle for Smithing/Crafting/Tailoring — filters to base material chains only. Combat drops and catalysts excluded.</p>
+      <p>2.2 Material chain split: Tailoring now supports All / Cloth / Leather modes with independent tier filtering.</p>
+      <p>2.3 Shrine import: shrine data import and profit calculation support added.</p>
+      <p>2.4 Tier crafting: multi-step chains now have start material & end tier buttons for custom chain config.</p>
+      <p>2.5 Preset compare: load two presets side by side to compare profit differences at a glance.</p>
+      <p>2.6 Load optimization: page renders first, data loads async — no more long white screens on slow machines.</p>
+      <p>2.7 Tier fix: cloth tier name "辐光" corrected to "光辉".</p>
+      <p>2.8 Changelog popup: first visit per version shows update notes; won't show again once dismissed.</p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">3. Community</p>
+      <p>3.1 Feedback form: new feedback page — submit bug reports and feature requests directly to the dev.</p>
+      <p>3.2 New sponsors: thanks to Laulau01 (¥28.88) and Kong (¥30)!</p>
+      <p style="color:#e6a23c">⚠ Please include your in-game nickname when donating — this is important!</p>
+      <p style="color:#e6a23c">⚠ Donor with WeChat name "空" — please contact me to claim your nickname! Temporarily named you Kong.</p>
+
+      <p style="color:#909399;font-size:12px;margin-top:16px">Shown once per version. Close to dismiss.</p>
+    </div>
+
+    <template #footer>
+      <el-button type="primary" @click="announceDismiss">{{ locale === 'en' ? 'Got it' : '知道了' }}</el-button>
+    </template>
+  </el-dialog>
   <div class="app-container">
     <div class="game-info">
       <GameInfo />
@@ -405,6 +484,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
               <template v-if="showTierFilter">
                 <el-form-item v-if="tierChains.length > 1" :label="t('材质链')">
                   <el-radio-group v-model="ldSearchData.tierChainKey" size="small" @change="handleTierChainChange">
+                    <el-radio-button label="" class="tier-chain-btn">{{ t('全部') }}</el-radio-button>
                     <el-radio-button v-for="c in tierChains" :key="c.key" :label="c.key" class="tier-chain-btn">{{ t(c.label) }}</el-radio-button>
                   </el-radio-group>
                 </el-form-item>
@@ -422,6 +502,13 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
                   <el-select v-model="ldSearchData.endTierLevel" :placeholder="t('不限')" style="width:90px" clearable @change="handleSearchLD">
                     <el-option v-for="tier in tierOptions" :key="tier.itemLevel" :label="t(tier.label)" :value="tier.itemLevel" />
                   </el-select>
+                </el-form-item>
+
+                <el-form-item :label="t('纯净火车')">
+                  <el-switch v-model="ldSearchData.pureOnly" @change="handleSearchLD" />
+                  <el-tooltip :content="t('仅显示所有原料均来自当前材质链的产物，排除混入战斗/稀有掉落（黄油、树枝、毛线）的装备')" placement="top">
+                    <el-icon style="margin-left:6px;cursor:help;color:#909399"><QuestionFilled /></el-icon>
+                  </el-tooltip>
                 </el-form-item>
               </template>
 

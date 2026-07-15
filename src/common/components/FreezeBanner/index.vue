@@ -108,7 +108,7 @@ onMounted(() => {
 
           <div class="available-info">
             <span class="info-label">{{ t('暂停期间可访问') }}:</span>
-            <span class="info-pages">{{ t('英灵殿') }}、{{ t('打赏') }}</span>
+            <span class="info-pages">{{ t('英灵殿') }}、{{ t('建议反馈') }}、{{ t('打赏') }}</span>
           </div>
         </div>
       </div>

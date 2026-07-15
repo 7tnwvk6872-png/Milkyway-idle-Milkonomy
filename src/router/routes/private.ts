@@ -156,6 +156,23 @@ export const privateRoutes: RouteRecordRaw[] = [
   {
     path: "/",
     component: Layouts,
+    redirect: "/feedback",
+    children: [
+      {
+        path: "feedback",
+        component: () => import("@/pages/feedback/index.vue"),
+        name: "Feedback",
+        meta: {
+          title: t("建议反馈"),
+          elIcon: "ChatLineSquare",
+          affix: true
+        }
+      }
+    ]
+  },
+  {
+    path: "/",
+    component: Layouts,
     redirect: "/sponsor",
     children: [
       {

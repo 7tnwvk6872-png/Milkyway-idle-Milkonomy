@@ -25,7 +25,7 @@ export const freezeConfig: FreezeConfig = {
   endDate: new Date("2025-11-04T00:00:00"),
 
   // 冻结期间允许访问的路由名称
-  allowedRoutes: ["Valhalla", "Burial", "Sponsor"],
+  allowedRoutes: ["Valhalla", "Burial", "Feedback", "Sponsor"],
 
   // 提示信息
   message: {

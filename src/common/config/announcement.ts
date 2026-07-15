@@ -21,16 +21,15 @@ export interface AnnouncementConfig {
 }
 
 export const announcementConfig: AnnouncementConfig = {
-  // 开源公告已下线：如需再次启用公告功能，将此处改为 true 并更新 id/message。
   enabled: false,
-  id: "open-source-2026",
+  id: "v2.1.0-2026",
   message: {
-    title: "开源公告",
-    content: "#开源公告"
+    title: "v2.1.0 更新公告",
+    content: "神龛 Buff / 预设弹窗重构 / 快速导入 / 装备自动填入 / 成就修复 / 菜单重组 / 材质链修复 / 公告弹窗 / 导出脚本 v1.5.0"
   },
   link: {
-    url: "https://github.com/luyh7/milkonomy",
-    text: "GitHub"
+    url: "https://polokikiki.github.io/Milkonomy/#/changelog",
+    text: "查看详情"
   }
 }
 

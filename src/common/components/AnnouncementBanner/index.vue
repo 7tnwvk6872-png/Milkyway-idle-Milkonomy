@@ -3,7 +3,11 @@ import { announcementConfig, dismissAnnouncement, shouldShowAnnouncement } from 
 
 const { t } = useI18n()
 
-const visible = ref(shouldShowAnnouncement())
+const visible = ref(false)
+
+onMounted(() => {
+  visible.value = shouldShowAnnouncement()
+})
 
 function handleClose() {
   dismissAnnouncement()
@@ -12,15 +16,14 @@ function handleClose() {
 </script>
 
 <template>
-  <Transition name="announcement-slide">
-    <div v-if="visible" class="announcement-banner">
-      <div class="announcement-content">
+  <Transition name="modal-fade">
+    <div v-if="visible" class="announcement-overlay" @click.self="handleClose">
+      <div class="announcement-modal">
         <div class="announcement-icon">
           🎉
         </div>
         <div class="announcement-text">
           <span class="announcement-title">{{ t(announcementConfig.message.title) }}</span>
-          <span class="announcement-separator">—</span>
           <span class="announcement-message">{{ t(announcementConfig.message.content) }}</span>
           <a
             v-if="announcementConfig.link"
@@ -43,85 +46,69 @@ function handleClose() {
 </template>
 
 <style scoped lang="scss">
-.announcement-banner {
-  position: relative;
-  z-index: 9999;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
-  padding: 10px 0;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.announcement-content {
+.announcement-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 48px 0 16px;
+}
+
+.announcement-modal {
   position: relative;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 40px 32px 32px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  color: #333;
 }
 
 .announcement-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-  animation: bounce 2s ease infinite;
-}
-
-@keyframes bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
+  font-size: 48px;
+  margin-bottom: 16px;
 }
 
 .announcement-text {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .announcement-title {
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-
-.announcement-separator {
-  opacity: 0.6;
+  font-size: 20px;
+  color: #667eea;
 }
 
 .announcement-message {
-  opacity: 0.95;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
 }
 
 .announcement-link {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   color: #ffffff;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 12px;
-  border-radius: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 8px 24px;
+  border-radius: 8px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   transition: all 0.25s ease;
-  white-space: nowrap;
+  margin-top: 8px;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.35);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
   }
 
   .link-icon {
@@ -140,66 +127,43 @@ function handleClose() {
 
 .announcement-close {
   position: absolute;
+  top: 12px;
   right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.15);
+  background: #f0f0f0;
   border: none;
-  color: #ffffff;
-  width: 24px;
-  height: 24px;
+  color: #999;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
   transition: all 0.2s ease;
   padding: 0;
   line-height: 1;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-50%) scale(1.1);
-  }
-}
-
-// 响应式
-@media (max-width: 768px) {
-  .announcement-content {
-    padding: 0 36px 0 12px;
-    gap: 8px;
-  }
-
-  .announcement-text {
-    font-size: 13px;
-  }
-
-  .announcement-separator {
-    display: none;
-  }
-
-  .announcement-title {
-    font-size: 13px;
+    background: #e0e0e0;
+    color: #333;
   }
 }
 
 // 过渡动画
-.announcement-slide-enter-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+.modal-fade-enter-active {
+  transition: all 0.3s ease;
 }
-
-.announcement-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.modal-fade-leave-active {
+  transition: all 0.2s ease;
 }
-
-.announcement-slide-enter-from {
+.modal-fade-enter-from {
   opacity: 0;
-  transform: translateY(-100%);
 }
-
-.announcement-slide-leave-to {
+.modal-fade-enter-from .announcement-modal {
+  transform: scale(0.9) translateY(20px);
+}
+.modal-fade-leave-to {
   opacity: 0;
-  transform: translateY(-100%);
 }
 </style>

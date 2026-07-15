@@ -43,8 +43,8 @@ app.use(VueGtag, {
   }
 })
 
-useGameStoreOutside().hydratePersistentData().then(() => useGameStoreOutside().tryFetchData()).then(() => {
-  router.isReady().then(() => {
-    app.mount("#app")
-  })
+// 立即挂载 app，数据异步加载
+router.isReady().then(() => {
+  app.mount("#app")
 })
+useGameStoreOutside().hydratePersistentData().then(() => useGameStoreOutside().tryFetchData())

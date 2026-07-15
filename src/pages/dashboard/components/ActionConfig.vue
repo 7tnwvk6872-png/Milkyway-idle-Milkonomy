@@ -8,6 +8,7 @@ import { ElMessageBox } from "element-plus"
 import { getAchievementTierDetailOf, getCommunityBuffDetailOf, getPersonalBuffDetailOf } from "@/common/apis/game"
 import { useGameStore } from "@/pinia/stores/game"
 import { getEquipmentListOf, getSealList, getSpecialEquipmentListOf, getTeaListOf, getToolListOf, setActionConfigApi } from "@/common/apis/player"
+import { getEquipmentTypeOf } from "@/common/utils/game"
 import { useTheme } from "@/common/composables/useTheme"
 import { DEFAULT_ACHIEVEMENT_BUFF_LIST, DEFAULT_COMMUNITY_BUFF_LIST, DEFAULT_SEPCIAL_EQUIPMENT_LIST, DEFAULT_SHRINE_LIST, SHRINE_CONFIG } from "@/common/config"
 import { getTrans } from "@/locales"
@@ -49,6 +50,7 @@ function getBackEquipmentListOf(action: Action) {
 }
 
 const playerStore = usePlayerStore()
+const gameStore = useGameStore()
 const visible = ref(false)
 const actionList = ref<ActionConfigItem[]>([])
 const specialList = ref<PlayerEquipmentItem[]>([])
@@ -534,6 +536,49 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
           if (loc) equipMap[loc] = { itemHrid: e.hrid || "", enhancementLevel: e.enhanceLevel || 0 }
         }
 
+        // 从仓库库存自动填入装备
+        const inventoryMap = (data.inventoryMap || {}) as Record<string, number>
+        const hasIv = Object.keys(inventoryMap).length > 0
+        const pickBest = (candidates: ItemDetail[]): ItemDetail | null => {
+          if (!hasIv || !candidates.length) return null
+          const owned = candidates.filter(c => typeof inventoryMap[c.hrid] === "number")
+          if (!owned.length) return null
+          owned.sort((a, b) => (inventoryMap[b.hrid] || 0) - (inventoryMap[a.hrid] || 0) || b.itemLevel - a.itemLevel)
+          return owned[0]
+        }
+        if (hasIv) {
+          // 工具：按 action 扫描仓库取最佳
+          for (const action of ACTION_LIST) {
+            const toolKey = `${action}_tool`
+            const best = pickBest(getToolListOf(action))
+            if (best) equipMap[toolKey] = { itemHrid: best.hrid, enhancementLevel: inventoryMap[best.hrid] || 0 }
+          }
+          // 特殊装备：仓库取最佳
+          for (const se of DEFAULT_SEPCIAL_EQUIPMENT_LIST) {
+            const best = pickBest(getSpecialEquipmentListOf(se.type))
+            if (best) equipMap[se.type] = { itemHrid: best.hrid, enhancementLevel: inventoryMap[best.hrid] || 0 }
+          }
+        }
+
+        // 建立按动作分类的装备候选列表（身体/腿部/护符/披风 各有不同动作适用）
+        const bodyByAction: Record<string, ItemDetail[]> = {}
+        const legsByAction: Record<string, ItemDetail[]> = {}
+        const charmByAction: Record<string, ItemDetail[]> = {}
+        const backByAction: Record<string, ItemDetail[]> = {}
+        for (const item of Object.values(gameStore.gameData!.itemDetailMap)) {
+          if (!item.equipmentDetail?.noncombatStats) continue
+          const eqType = getEquipmentTypeOf(item)
+          if (eqType === "body") {
+            for (const action of ACTION_LIST) { if (doesEquipmentApply(item.hrid, action)) { bodyByAction[action] ??= []; bodyByAction[action].push(item) } }
+          } else if (eqType === "legs") {
+            for (const action of ACTION_LIST) { if (doesEquipmentApply(item.hrid, action)) { legsByAction[action] ??= []; legsByAction[action].push(item) } }
+          } else if (eqType === "charm") {
+            for (const action of ACTION_LIST) { if (doesEquipmentApply(item.hrid, action)) { charmByAction[action] ??= []; charmByAction[action].push(item) } }
+          } else if (eqType === "back") {
+            for (const action of ACTION_LIST) { if (doesEquipmentApply(item.hrid, action)) { backByAction[action] ??= []; backByAction[action].push(item) } }
+          }
+        }
+
         // 技能等级映射
         const skillLevels: Partial<Record<Action, number>> = {}
         for (const [skillHrid, level] of Object.entries(data.skills || {})) {
@@ -585,9 +630,35 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
           const defaultItem = defaultConfig.actionConfigMap.get(action)!
           const toolLoc = `${action}_tool`
           const toolData = equipMap[toolLoc]
-          const bodyData = equipMap["body"]; const capeData = equipMap["back"]
+          const bodyData = equipMap["body"]
           const legsData = equipMap["legs"]
           const charmData = equipMap["charm"] || equipMap["amulet"]
+          const capeData = equipMap["back"]
+
+          const bestBody = pickBest(bodyByAction[action] || [])
+          const bestLegs = pickBest(legsByAction[action] || [])
+          const bestCharm = pickBest(charmByAction[action] || [])
+          const bestBack = pickBest(backByAction[action] || [])
+
+          const bodyHrid = bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.itemHrid
+            : bestBody ? bestBody.hrid : (useDefaults ? defaultItem.body.hrid : undefined)
+          const bodyLevel = bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.enhancementLevel
+            : bestBody ? (inventoryMap[bestBody.hrid] || 0) : (useDefaults ? defaultItem.body.enhanceLevel : undefined)
+
+          const legsHrid = legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.itemHrid
+            : bestLegs ? bestLegs.hrid : (useDefaults ? defaultItem.legs.hrid : undefined)
+          const legsLevel = legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.enhancementLevel
+            : bestLegs ? (inventoryMap[bestLegs.hrid] || 0) : (useDefaults ? defaultItem.legs.enhanceLevel : undefined)
+
+          const charmHrid = charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.itemHrid
+            : bestCharm ? bestCharm.hrid : (useDefaults ? defaultItem.charm.hrid : undefined)
+          const charmLevel = charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.enhancementLevel
+            : bestCharm ? (inventoryMap[bestCharm.hrid] || 0) : (useDefaults ? defaultItem.charm.enhanceLevel : undefined)
+
+          const capeHrid = capeData?.itemHrid && doesEquipmentApply(capeData.itemHrid, action) ? capeData.itemHrid
+            : bestBack ? bestBack.hrid : undefined
+          const capeLevel = capeData?.itemHrid && doesEquipmentApply(capeData.itemHrid, action) ? capeData.enhancementLevel
+            : bestBack ? (inventoryMap[bestBack.hrid] || 0) : undefined
 
           actionConfigMap.set(action, {
             action,
@@ -597,26 +668,14 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
               hrid: toolData?.itemHrid ?? (useDefaults ? defaultItem.tool.hrid : undefined),
               enhanceLevel: toolData?.enhancementLevel ?? (useDefaults ? defaultItem.tool.enhanceLevel : undefined)
             },
-            body: {
-              type: "body",
-              hrid: bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.itemHrid : (useDefaults ? defaultItem.body.hrid : undefined),
-              enhanceLevel: bodyData?.itemHrid && doesEquipmentApply(bodyData.itemHrid, action) ? bodyData.enhancementLevel : (useDefaults ? defaultItem.body.enhanceLevel : undefined)
-            },
-            legs: {
-              type: "legs",
-              hrid: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.itemHrid : (useDefaults ? defaultItem.legs.hrid : undefined),
-              enhanceLevel: legsData?.itemHrid && doesEquipmentApply(legsData.itemHrid, action) ? legsData.enhancementLevel : (useDefaults ? defaultItem.legs.enhanceLevel : undefined)
-            },
-            back: capeData?.itemHrid && doesEquipmentApply(capeData.itemHrid, action) ? {
+            body: { type: "body", hrid: bodyHrid, enhanceLevel: bodyLevel },
+            legs: { type: "legs", hrid: legsHrid, enhanceLevel: legsLevel },
+            back: (capeHrid || bestBack) ? {
               ...defaultItem.back,
-              hrid: capeData.itemHrid,
-              enhanceLevel: capeData.enhancementLevel
+              hrid: capeHrid || bestBack!.hrid,
+              enhanceLevel: capeLevel ?? (bestBack ? (inventoryMap[bestBack.hrid] || 0) : undefined)
             } : { ...defaultItem.back },
-            charm: {
-              type: "charm",
-              hrid: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.itemHrid : (useDefaults ? defaultItem.charm.hrid : undefined),
-              enhanceLevel: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.enhancementLevel : (useDefaults ? defaultItem.charm.enhanceLevel : undefined)
-            },
+            charm: { type: "charm", hrid: charmHrid, enhanceLevel: charmLevel },
             houseLevel: houseLevels[action] ?? defaultItem.houseLevel,
             tea: structuredClone(defaultItem.tea)
           })
@@ -693,9 +752,10 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
         throw new Error("无法识别的数据格式")
       }
 
-      // 计算成就 Buff（根据已完成的成就数估算 Tier）
+      // 计算成就 Buff
       const achievementBuffMap = new Map<AchievementTier, AchievementBuffItem>(defaultConfig.achievementBuffMap)
-      if (data.achievementTierMap && typeof data.achievementTierMap === "object") {
+      const hasTierMap = data.achievementTierMap && typeof data.achievementTierMap === "object" && Object.keys(data.achievementTierMap).length > 0
+      if (hasTierMap) {
         // 如果有 tier map，直接读取
         for (const [tierHrid, unlocked] of Object.entries(data.achievementTierMap)) {
           const tier = (tierHrid as string).split("/").pop()
@@ -707,22 +767,52 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
           }
         }
       } else if (data.achievements) {
-        // 根据成就点数估算 (兼容 boolean、{isCompleted}、{completed} 三种格式)
-        const achValues = Object.values(data.achievements) as any[]
-        var points = typeof data.achievementPoints === "number" && data.achievementPoints > 0
-          ? data.achievementPoints
-          : achValues.filter(function(v) {
-              if (v === true || v === 1) return true
-              if (v && typeof v === "object") return v.isCompleted === true || v.completed === true
-              return false
-            }).length * 10
-        const tiers: AchievementTier[] = ["beginner", "novice", "adept", "veteran", "elite", "champion"]
-        const thresholds: number[] = [10, 25, 50, 100, 200, 400]
-        for (let i = 0; i < tiers.length; i++) {
-          achievementBuffMap.set(tiers[i], {
-            type: tiers[i],
-            enabled: points >= thresholds[i]
-          })
+        // 每个 tier 含一组固定成就，全部完成才激活
+        // 先建立 achievementHrid → 是否已经完成的映射
+        const completedAchMap: Record<string, boolean> = {}
+        let achCompletedCount = 0
+        let achTotalCount = 0
+        for (const v of Object.values(data.achievements) as any[]) {
+          const hrid = v?.achievementHrid
+          if (!hrid) continue
+          achTotalCount++
+          const done = (v === true || v === 1) ? true
+            : (v && typeof v === "object") ? (v.isCompleted === true || v.completed === true)
+            : false
+          completedAchMap[hrid] = done
+          if (done) achCompletedCount++
+        }
+        // 从游戏数据获取每个成就属于哪个 tier
+        const achDetailMap = (gameStore.gameData as any)?.achievementDetailMap
+        if (achDetailMap && achTotalCount > 0) {
+          // 统计每个 tier 需要几个成就、完成了几个
+          const tierReq: Record<string, { total: number; done: number }> = {}
+          for (const [hrid, detail] of Object.entries(achDetailMap)) {
+            const tierHrid = (detail as any).tierHrid as string | undefined
+            if (!tierHrid) continue
+            const tier = tierHrid.split("/").pop()!
+            tierReq[tier] ??= { total: 0, done: 0 }
+            tierReq[tier].total++
+            if (completedAchMap[hrid]) tierReq[tier].done++
+          }
+          for (const [tier, stats] of Object.entries(tierReq)) {
+            if ((ACHIEVEMENT_TIER_LIST as readonly string[]).includes(tier)) {
+              achievementBuffMap.set(tier as AchievementTier, {
+                type: tier as AchievementTier,
+                enabled: stats.total > 0 && stats.done >= stats.total
+              })
+            }
+          }
+        } else {
+          // 没办法读取游戏数据时，按总数估算每个 tier
+          const tiers: AchievementTier[] = ["beginner", "novice", "adept", "veteran", "elite", "champion"]
+          const countThresholds: number[] = [10, 25, 50, 100, 200, 400]
+          for (let i = 0; i < tiers.length; i++) {
+            achievementBuffMap.set(tiers[i], {
+              type: tiers[i],
+              enabled: achCompletedCount >= countThresholds[i]
+            })
+          }
         }
       }
 

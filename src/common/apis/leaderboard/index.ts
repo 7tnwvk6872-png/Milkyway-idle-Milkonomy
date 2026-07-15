@@ -11,12 +11,15 @@ import locales, { getTrans } from "@/locales"
 import { type StorageCalculatorItem, useFavoriteStoreOutside } from "@/pinia/stores/favorite"
 import { useGameStoreOutside } from "@/pinia/stores/game"
 import { getGameDataApi } from "../game"
-import { isShopTier, parseTierLevel, TIER_CHAINS } from "./tierChains"
+import { isShopTier, normalizeProject, parseTierLevel, TIER_CHAINS } from "./tierChains"
 import { handlePage, handlePush, handleSearch, handleSort, handleVolume1hSearch } from "../utils"
 
 const { t } = locales.global
 /** 查 */
 export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
+  // 数据未就绪时返回空
+  const marketData = useGameStoreOutside().marketData
+  if (!marketData) return { list: [], total: 0 } as any
   const includeTax = params.includeTax !== false
   const sellTaxFactor = includeTax ? 0.98 : 1
   const crossStepBalance = params.crossStepBalance === true
@@ -67,7 +70,23 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
   const endTier = params.endTierLevel
   const hasStartTier = startTier !== undefined && startTier !== null && startTier !== ""
   const hasEndTier = endTier !== undefined && endTier !== null && endTier !== ""
-  if (hasStartTier || hasEndTier) {
+  // 材质链前缀（用于区分皮革/布料同等级的情况）
+  let chainPrefixes: string[] = []
+  if (params.tierChainKey && params.project) {
+    const chainList = TIER_CHAINS[normalizeProject(params.project)] || []
+    const chain = chainList.find(c => c.key === params.tierChainKey)
+    if (chain) {
+      chainPrefixes = chain.tiers.map(t => t.label)
+      // 奶酪链特殊处理
+      const extra: string[] = []
+      for (const label of chainPrefixes) {
+        const short = label.replace('奶酪', '')
+        if (short && short !== label) extra.push(short)
+      }
+      chainPrefixes.push(...extra)
+    }
+  }
+  if (hasStartTier || hasEndTier || chainPrefixes.length > 0) {
     profitList = profitList.filter((item: any) => {
       // 只有 workflow（多步制作）才有 calculatorList，非 workflow 不参与档位筛选
       const calcList = item.calculatorList
@@ -79,6 +98,12 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
       const endLevel = item.item?.itemLevel
       if (hasStartTier && startLevel !== parseTierLevel(startTier)) return false
       if (hasEndTier && endLevel !== parseTierLevel(endTier)) return false
+      // 材质链区分：产物名必须匹配链前缀
+      if (chainPrefixes.length > 0) {
+        const rawName: string = item.name || item.item?.name || ''
+        const itemName: string = rawName.match(/^[一-龥]/) ? rawName : t(rawName)
+        if (!chainPrefixes.some(p => itemName.startsWith(p))) return false
+      }
       return true
     })
   }
@@ -126,6 +151,84 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
           result,
           hasManualPrice: true
         }
+      })
+    }
+  }
+
+  // 材质链筛选：选了材质链就自动过滤，不用再勾纯净火车
+  // 纯净火车：所有非催化剂原料必须来自该项目下的任一材质链等级
+  if ((params.pureOnly || !!params.tierChainKey) && params.project) {
+    const normProject = normalizeProject(params.project || '')
+    const chainList = TIER_CHAINS[normProject]
+    if (chainList) {
+      // 收集所有合法原料前缀：当前项目下所有链 + 制造板甲需要锻造链奶酪
+      const allProjectLabels = new Set<string>()
+      for (const chain of chainList) {
+        for (const tier of chain.tiers) allProjectLabels.add(tier.label)
+      }
+      // 制造/锻造 需要奶酪前缀（板甲 = 木材 + 奶酪）
+      if (normProject === '制造' || normProject === '锻造') {
+        const cheeseChain = TIER_CHAINS['锻造']
+        if (cheeseChain) {
+          for (const chain of cheeseChain) {
+            for (const tier of chain.tiers) allProjectLabels.add(tier.label)
+          }
+        }
+      }
+      const projectPrefixes = Array.from(allProjectLabels)
+      // 加上"奶酪"剥离后的短前缀（如"神圣奶酪"→"神圣"）
+      const fullProjectPrefixes = new Set<string>(projectPrefixes)
+      for (const label of projectPrefixes) {
+        const short = label.replace('奶酪', '')
+        if (short && short !== label) fullProjectPrefixes.add(short)
+      }
+
+      // 选中链的档位标签（用于非纯纯净火车时至少一个匹配即可）
+      let selectedLabels: string[]
+      if (params.tierChainKey && chainList.length > 1) {
+        const selChain = chainList.find(c => c.key === params.tierChainKey)
+        selectedLabels = selChain?.tiers.map(t => t.label) || []
+      } else {
+        selectedLabels = chainList[0].tiers.map(t => t.label)
+      }
+      const selectedPrefixes = new Set<string>(selectedLabels)
+      for (const label of selectedLabels) {
+        const short = label.replace('奶酪', '')
+        if (short && short !== label) selectedPrefixes.add(short)
+      }
+
+      const gameData = getGameDataApi()
+      const skipNames = new Set(['精通之油', '洞察之枝', '专精之线',
+        'Butter Of Proficiency', 'Branch Of Insight', 'Thread Of Expertise'])
+
+      profitList = profitList.filter((item: any) => {
+        const ingrList = item.ingredientListWithPrice || item.ingredientList || []
+        // 无原料列表：无法判断，保留
+        if (ingrList.length === 0) return true
+
+        // 收集配方中所有主原料（跳过催化和茶）
+        const mainIngs: { hrid: string; name: string }[] = []
+        for (const ing of ingrList) {
+          const hrid: string = ing.hrid || ''
+          const detail = gameData.itemDetailMap[hrid]
+          if (!detail) continue
+          const ingName: string = t(detail.name)
+          if (skipNames.has(ingName) || skipNames.has(detail.name)) continue
+          if (ingName.includes('茶')) continue
+          mainIngs.push({ hrid, name: ingName })
+        }
+        // 全是催化剂/茶 → 保留
+        if (mainIngs.length === 0) return true
+
+        if (params.pureOnly) {
+          // 纯净模式：所有主原料必须匹配该项目的合法材质等级
+          return mainIngs.every(ing =>
+            Array.from(fullProjectPrefixes).some((p: string) => ing.name.startsWith(p)))
+        }
+
+        // 普通材质链筛选：至少一个原料匹配选中链
+        return mainIngs.some(ing =>
+          Array.from(selectedPrefixes).some((p: string) => ing.name.startsWith(p)))
       })
     }
   }

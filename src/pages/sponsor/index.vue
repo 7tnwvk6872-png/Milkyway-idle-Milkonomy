@@ -6,6 +6,7 @@ import logoHyhfishWechat from "@@/assets/images/sponsor/hyhfish-wechat.jpg?url"
 import logoWechatOrg from "@@/assets/images/sponsor/wechat_org.jpg?url"
 import axios from "axios"
 import { ElLoading, type FormRules } from "element-plus"
+import { useI18n } from "vue-i18n"
 
 const submitUrl = "https://script.google.com/macros/s/AKfycbxByTjiRX36ufKHQgV1aVRrIcdxjmqEZ0SAm5qkse6CZEyoZVxKW2xmvegxB3o3bGgKOg/exec"
 const listUrl = "https://opensheet.elk.sh/1s-dW5trnzg9t93VtLEAxwBTfYEiHXRRZGGaiCgKhl9k/1"
@@ -37,13 +38,14 @@ const refForm = ref()
 const form = ref<Sponsor>({})
 const dialogVisible = ref(false)
 const dialogLoading = ref(false)
+const { t } = useI18n()
 let loadingService: any
 
 const rules = reactive<FormRules>({
-  nickname: [{ required: true, message: "不能为空", trigger: ["blur", "change"] }],
-  platform: [{ required: true, message: "不能为空", trigger: ["blur", "change"] }],
-  name: [{ required: true, message: "不能为空", trigger: ["blur", "change"] }],
-  amount: [{ required: true, message: "不能为空", trigger: ["blur", "change"] }]
+  nickname: [{ required: true, message: t("不能为空"), trigger: ["blur", "change"] }],
+  platform: [{ required: true, message: t("不能为空"), trigger: ["blur", "change"] }],
+  name: [{ required: true, message: t("不能为空"), trigger: ["blur", "change"] }],
+  amount: [{ required: true, message: t("不能为空"), trigger: ["blur", "change"] }]
 })
 
 const paymentCards = [
@@ -113,7 +115,7 @@ function submit() {
       }
     })
       .then(() => {
-        ElMessage.success("提交成功，请等待审核")
+        ElMessage.success(t("提交成功，请等待审核"))
         dialogVisible.value = false
         loadData()
       })
@@ -157,7 +159,21 @@ function loadData() {
           map.set(item.nickname!, item)
         }
       })
-      sponsorList.value = Array.from(map.values()).sort((a, b) => b.amount! - a.amount!)
+      // 手动添加的赞助者
+      const hardcoded: Sponsor[] = [
+        { approved: true, nickname: "Laulau01", platform: "微信", amount: 28.88 },
+        { approved: true, nickname: "Kong", platform: "微信", amount: 30 },
+      ]
+      for (const h of hardcoded) {
+        const existing = map.get(h.nickname!)
+        if (existing) {
+          existing.amount = (existing.amount || 0) + (h.amount || 0)
+        } else {
+          map.set(h.nickname!, h)
+        }
+      }
+
+      sponsorList.value = Array.from(map.values()).sort((a, b) => (b.amount || 0) - (a.amount || 0))
     })
     .catch((e) => {
       ElMessage.error(e)
@@ -178,19 +194,19 @@ loadData()
   <div class="sponsor-page">
     <div class="page-head">
       <h1>
-        打赏页面
+        {{ t('打赏页面') }}
       </h1>
       <p class="sub-title">
-        如果你觉得 Milkonomy 对你有帮助，可以通过下方方式支持后续维护。
+        {{ t('如果你觉得 Milkonomy 对你有帮助，可以通过下方方式支持后续维护。') }}
       </p>
       <p class="meta-line">
-        原作者：<span class="author">luyh7</span>、<span class="author">hyhfish</span>
+        {{ t('原作者：') }}<span class="author">luyh7</span>、<span class="author">hyhfish</span>
       </p>
       <p class="meta-line">
-        当前维护者：<span class="maintainer">Polokiki</span> / QQ：<span class="maintainer">1508828092</span>
+        {{ t('当前维护者：') }}<span class="maintainer">Polokiki</span> / QQ：<span class="maintainer">1508828092</span>
       </p>
       <p class="meta-line">
-        请 <span class="maintainer">luyh7、hyhfish、Polokiki</span> 喝杯奶茶
+        {{ t('请 {0} 喝杯奶茶', ['luyh7、hyhfish、Polokiki']) }}
       </p>
     </div>
 
@@ -199,14 +215,14 @@ loadData()
         <el-card class="sponsor-list">
           <template #header>
             <div class="card-head">
-              <span>感谢以下玩家打赏</span>
+              <span>{{ t('感谢以下玩家打赏') }}</span>
               <el-button type="primary" @click="dialogVisible = true">
-                我要上榜
+                {{ t('我要上榜') }}
               </el-button>
             </div>
           </template>
           <el-table v-loading="sponsorLoading" :data="sponsorList">
-            <el-table-column label="排名" width="70">
+            <el-table-column :label="t('排名')" width="70">
               <template #default="{ $index }">
                 <div class="rank-cell">
                   <span>{{ ["🥇", "🥈", "🥉"][$index] || $index + 1 }}</span>
@@ -214,7 +230,7 @@ loadData()
               </template>
             </el-table-column>
 
-            <el-table-column prop="nickname" label="昵称">
+            <el-table-column prop="nickname" :label="t('昵称')">
               <template #default="{ row }">
                 <div :class="{ [row.nickname]: true }" class="nickname-cell">
                   <span>{{ row.nickname }}</span>
@@ -227,7 +243,7 @@ loadData()
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="amount" label="金额" width="100">
+            <el-table-column prop="amount" :label="t('金额')" width="100">
               <template #default="{ row }">
                 <span>¥{{ row.amount }}</span>
               </template>
@@ -263,33 +279,33 @@ loadData()
       </el-col>
     </el-row>
 
-    <el-dialog class="dialog" v-model="dialogVisible" title="我要上榜" :show-close="false">
+    <el-dialog class="dialog" v-model="dialogVisible" :title="t('我要上榜')" :show-close="false">
       <el-form ref="refForm" :model="form" class="form" :rules="rules" label-width="80px">
-        <el-form-item prop="nickname" label="昵称">
-          <el-input v-model="form.nickname" placeholder="打赏者名单上显示的名字" />
+        <el-form-item prop="nickname" :label="t('昵称')">
+          <el-input v-model="form.nickname" :placeholder="t('打赏者名单上显示的名字')" />
         </el-form-item>
-        <el-form-item prop="platform" label="平台">
-          <el-select v-model="form.platform" placeholder="请选择">
-            <el-option label="支付宝" value="支付宝" />
-            <el-option label="微信" value="微信" />
-            <el-option label="Paypal" value="Paypal" />
+        <el-form-item prop="platform" :label="t('平台')">
+          <el-select v-model="form.platform" :placeholder="t('请选择')">
+            <el-option :label="t('支付宝')" value="支付宝" />
+            <el-option :label="t('微信')" value="微信" />
+            <el-option :label="t('Paypal')" value="Paypal" />
           </el-select>
         </el-form-item>
-        <el-form-item prop="name" label="姓名">
-          <el-input v-model="form.name" placeholder="您支付时使用的名字" />
+        <el-form-item prop="name" :label="t('姓名')">
+          <el-input v-model="form.name" :placeholder="t('您支付时使用的名字')" />
         </el-form-item>
-        <el-form-item prop="amount" label="金额">
+        <el-form-item prop="amount" :label="t('金额')">
           <el-input v-model="form.amount" placeholder="CNY" />
         </el-form-item>
         <div class="form-tip">
-          提交后请等待审核，审核通过后会显示在打赏者名单中。
+          {{ t('提交后请等待作者审核，审核通过后会显示在打赏者名单中') }}
         </div>
       </el-form>
 
       <template #footer>
         <div class="dialog-footer">
           <el-button type="primary" @click="submit">
-            提交
+            {{ t('提交') }}
           </el-button>
         </div>
       </template>

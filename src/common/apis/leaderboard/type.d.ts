@@ -32,6 +32,8 @@ export interface RequestData {
   startTierLevel?: number | string
   /** 逐级制作终点档位（itemLevel） */
   endTierLevel?: number | string
+  /** 纯净火车：仅显示名称匹配当前材质链的产物 */
+  pureOnly?: boolean
 }
 
 export type ResponseData = ApiResponseData<{
