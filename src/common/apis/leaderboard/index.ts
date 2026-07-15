@@ -8,10 +8,12 @@ import { ManufactureCalculator } from "@/calculator/manufacture"
 import { getStorageCalculatorItem } from "@/calculator/utils"
 import { WorkflowCalculator } from "@/calculator/workflow"
 import locales, { getTrans } from "@/locales"
+import { SHOP_FIXED_PRICES } from "@/common/config"
 import { type StorageCalculatorItem, useFavoriteStoreOutside } from "@/pinia/stores/favorite"
 import { useGameStoreOutside } from "@/pinia/stores/game"
 import { getGameDataApi } from "../game"
 import { isShopTier, normalizeProject, parseTierLevel, TIER_CHAINS } from "./tierChains"
+import { getEquipmentTypeOf } from "@/common/utils/game"
 import { handlePage, handlePush, handleSearch, handleSort, handleVolume1hSearch } from "../utils"
 
 const { t } = locales.global
@@ -65,6 +67,18 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
   }
   profitList = handleVolume1hSearch(profitList, params)
 
+  // 排除装备：只保留原材料和多步制作链条，排除单步制造装备
+  if (params.banEquipment) {
+    profitList = profitList.filter((item: any) => {
+      const calcList = item.calculatorList
+      // 多步 workflow（原材料链条）保留
+      if (Array.isArray(calcList) && calcList.length >= 1) return true
+      // 单步制造（装备）隐藏，除非是采集（ingredientList 为空）
+      const il = item.ingredientListWithPrice || item.ingredientList || []
+      return il.length === 0
+    })
+  }
+
   // 逐级制作 / 起始材质筛选（仅对 workflow 多步制作生效）
   const startTier = params.startTierLevel
   const endTier = params.endTierLevel
@@ -89,69 +103,69 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
   if (hasStartTier || hasEndTier) {
     profitList = profitList.filter((item: any) => {
       const calcList = item.calculatorList
-      if (!Array.isArray(calcList) || calcList.length < 1) return false
-      const firstCal = Array.isArray(calcList[0]) ? calcList[0][0] : calcList[0]
-      const startLevel = firstCal?.item?.itemLevel
+      // 单步项目：直接检查物品等级
+      if (!Array.isArray(calcList) || calcList.length < 1) {
+        const itemLevel = item.item?.itemLevel
+        if (hasStartTier && itemLevel !== parseTierLevel(startTier)) return false
+        if (hasEndTier && itemLevel !== parseTierLevel(endTier)) return false
+        return true
+      }
+      // 多步项目：查找链路中第一个匹配起始材质的步骤
       const endLevel = item.item?.itemLevel
-      if (hasStartTier && startLevel !== parseTierLevel(startTier)) return false
+      if (hasStartTier) {
+        const targetStartLevel = parseTierLevel(startTier)
+        const found = calcList.some((cal: any) => {
+          const c = Array.isArray(cal) ? cal[0] : cal
+          return c?.item?.itemLevel === targetStartLevel
+        })
+        if (!found) return false
+      }
       if (hasEndTier && endLevel !== parseTierLevel(endTier)) return false
       return true
     })
   }
-  // 材质链前缀筛选：只保留产物名匹配选中链的物品
+  // 材质链前缀筛选（仅对 workflow 多步制作按产物名区分皮革/布料）
   if (chainPrefixes.length > 0) {
     profitList = profitList.filter((item: any) => {
+      const il = item.ingredientListWithPrice || item.ingredientList || []
+      // 有原料的就是单步制造（装备等），直接保留
+      if (il.length > 0) return true
       const rawName: string = item.name || item.item?.name || ''
       const itemName: string = rawName.match(/^[一-龥]/) ? rawName : t(rawName)
       return chainPrefixes.some(p => itemName.startsWith(p))
     })
   }
 
-  // 商店购买模式：起始材质的基础物品使用商店固定价格
+  // 商店购买模式：起始材质的原料使用商店固定价格（SHOP_FIXED_PRICES）
   if (isShopTier(startTier)) {
-    const tierLevel = parseTierLevel(startTier)
-    const chains = TIER_CHAINS
-    let shopCost: number | undefined
-    for (const chainList of Object.values(chains)) {
-      for (const chain of chainList) {
-        const tier = chain.tiers.find((t: any) => t.itemLevel === tierLevel && t.shopCost)
-        if (tier) { shopCost = tier.shopCost; break }
+    profitList = profitList.map((item: any) => {
+      const ingrList = item.ingredientListWithPrice
+      if (!Array.isArray(ingrList) || ingrList.length === 0) return item
+      // 检查所有原料是否有商店固定价
+      let shopPrice: number | undefined
+      let targetIndex = -1
+      for (let i = 0; i < ingrList.length; i++) {
+        const hrid: string = ingrList[i].hrid || ''
+        const price = SHOP_FIXED_PRICES[hrid]
+        if (typeof price === 'number') { shopPrice = price; targetIndex = i; break }
       }
-      if (shopCost !== undefined) break
-    }
-    if (shopCost !== undefined) {
-      profitList = profitList.map((item: any) => {
-        const ingrList = item.ingredientListWithPrice
-        if (!Array.isArray(ingrList) || ingrList.length === 0) return item
-        
-        // 用商店价替换第一个原料的价格
-        const oldPrice = ingrList[0].price || 0
-        const priceDelta = shopCost - oldPrice
-        if (priceDelta === 0) return item
-        
-        // 更新原料价格
-        const newIngrList = ingrList.map((ing: any, i: number) => {
-          if (i === 0) return { ...ing, price: shopCost }
-          return ing
-        })
-        
-        // 用价格差值重新计算利润相关字段
-        // 假设 countPH 是每小时消耗量，利润变化 = -delta * countPH
-        const countPH = ingrList[0].countPH || 1
-        const profitDelta = -priceDelta * countPH
-        
-        const result = { ...item.result }
-        result.profitPH = (result.profitPH || 0) + profitDelta
-        result.profitPD = (result.profitPD || 0) + profitDelta * 24
-        
-        return {
-          ...item,
-          ingredientListWithPrice: newIngrList,
-          result,
-          hasManualPrice: true
-        }
+      if (shopPrice === undefined) return item
+
+      const oldPrice = ingrList[targetIndex].price || 0
+      const priceDelta = shopPrice - oldPrice
+      if (priceDelta === 0) return item
+
+      const newIngrList = ingrList.map((ing: any, i: number) => {
+        if (i === targetIndex) return { ...ing, price: shopPrice }
+        return ing
       })
-    }
+      const countPH = ingrList[targetIndex].countPH || 1
+      const profitDelta = -priceDelta * countPH
+      const result = { ...item.result }
+      result.profitPH = (result.profitPH || 0) + profitDelta
+      result.profitPD = (result.profitPD || 0) + profitDelta * 24
+      return { ...item, ingredientListWithPrice: newIngrList, result, hasManualPrice: true }
+    })
   }
 
   // 材质链筛选：选了材质链就自动过滤，不用再勾纯净火车
@@ -168,6 +182,10 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
       const projAction = projectActionMap[normProject]
       if (projAction) {
         profitList = profitList.filter((item: any) => item.action === projAction)
+      }
+      // 纯净火车：护符不走标准材质链，自动排除
+      if (params.pureOnly) {
+        profitList = profitList.filter((item: any) => !item.item || getEquipmentTypeOf(item.item) !== "charm")
       }
       // 收集所有合法原料前缀：当前项目下所有链 + 制造板甲需要锻造链奶酪
       const allProjectLabels = new Set<string>()
@@ -225,9 +243,12 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
         if (mainIngs.length === 0) return true
 
         if (params.pureOnly) {
-          // 纯净模式：所有主原料必须匹配该项目的完整材质标签（不用短前缀）
+          // 纯净模式：选了具体链则只用该链标签，否则用所有项目标签
+          const purePrefixes = params.tierChainKey && chainList.length > 1
+            ? selectedLabels
+            : projectPrefixes
           return mainIngs.every(ing =>
-            projectPrefixes.some((p: string) => ing.name.startsWith(p)))
+            purePrefixes.some((p: string) => ing.name.startsWith(p)))
         }
 
         // 普通材质链筛选：至少一个原料匹配选中链

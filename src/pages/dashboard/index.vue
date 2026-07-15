@@ -329,18 +329,20 @@ const currentChain = computed(() => {
   return found || chains[0]
 })
 const tierOptions = computed(() => {
-  // "全部"模式下合并所有链的档位
+  // 多链（裁缝）未选链时合并，用统一等级名
   if (!ldSearchData.value.tierChainKey) {
+    const chains = tierChains.value
     const allTiers: { itemLevel: number; label: string; shopCost?: number }[] = []
     const seen = new Set<number>()
-    for (const chain of tierChains.value) {
+    for (const chain of chains) {
       for (const tier of chain.tiers) {
-        if (!seen.has(tier.itemLevel)) {
+        if (!seen.has(tier.itemLevel) && tier.itemLevel <= 95) {
           seen.add(tier.itemLevel)
-          allTiers.push(tier)
+          allTiers.push({ ...tier, label: chains.length > 1 ? `Lv${tier.itemLevel}` : tier.label })
         }
       }
     }
+    allTiers.sort((a, b) => a.itemLevel - b.itemLevel)
     return allTiers
   }
   return currentChain.value?.tiers || []
@@ -372,57 +374,53 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
 <template>
   <el-dialog v-model="announceVisible" :title="locale === 'en' ? 'Milkonomy v2.2.1 Update' : 'Milkonomy v2.2.1 更新'" width="560px" :close-on-click-modal="false" @close="announceDismiss">
     <!-- 中文公告 -->
-    <div v-if="locale !== 'en'" style="line-height:2;font-size:14px">
-      <p style="font-weight:bold;margin-bottom:8px">一、一键导入数据脚本</p>
-      <p>1. 映射修复：护符、背部、身体、腿部及房屋的导入映射已修复，各部位装备均可正确录入。</p>
-      <p>2. 批量提取：仓库内高品质装备、身体、腿部、护符支持一次性全量导出，无需逐件操作。</p>
-      <p>3. 生活技能提取：适配一键提取生活等级脚本，无需手动逐项录入。</p>
-      <p style="margin-top:4px">一键导入数据脚本：<a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Greasy Fork</a></p>
+        <div v-if="locale !== 'en'" style="line-height:2;font-size:14px">
+      <p style="font-weight:bold;margin-bottom:8px">一、利润网修复</p>
+      <p>1. 排行榜缓存：切换买/卖价后价格不再锁死，仪表盘、丛林、打野均修复。</p>
+      <p>2. 制造纯火车：选择起始材质后不再空白；纯净火车自动排除护符。</p>
+      <p>3. 排除装备完善：排除装备时保留多步链条，只隐藏单步制造装备。</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">二、利润网</p>
-      <p>1. 纯净火车：锻造、制造、裁缝新增开关，开启后仅保留基础材料制造链路，战斗掉落及精通之油、洞察之枝、专精之线不纳入计算。</p>
-      <p>2. 材质链区分：裁缝支持全部、布料、皮革三种模式独立切换，档位筛选仅在所选材质范围内生效。</p>
-      <p>3. 神龛导入：新增神龛数据导入与利润计算支持，补齐原版利润网的缺失模块。</p>
-      <p>4. 逐级制作：多步制作链路新增起始材质与终点档位设置按钮，支持自定义链条起止点。</p>
-      <p>5. 预设对比：支持同时加载两套预设方案，直观对比不同配置下的利润差异。</p>
-      <p>6. 加载优化：页面改为先渲染后加载数据，首次打开不再长时间白屏。</p>
-      <p>7. 档位修正：布料档位名称由 "辐光" 更正为 "光辉"。</p>
-      <p>8. 版本公告：每版本首次访问弹出更新说明，关闭后本版不再重复显示。</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">二、材质链改进</p>
+      <p>1. 裁缝档位补全：皮革补 Lv90、布料补 Lv85，全部模式上限 75→95。</p>
+      <p>2. 纯净火车提示修正：黄油/树枝/毛线 → 精通之油/洞察之枝/专精之线。</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">三、打赏 & 反馈</p>
-      <p>1. 使用教程：新增图文教程页面，从脚本安装到数据导入一步步教你用。</p>
-      <p>2. 建议反馈：新增反馈页面，支持提交 Bug 报告和功能建议，数据直达维护者。</p>
-      <p>3. 新赞助者：感谢 Laulau01（¥28.88）和 Kong（¥30）的支持！</p>
-      <p style="color:#e6a23c">⚠ 请在打赏时留下您的游戏昵称，这很重要！！</p>
-      <p style="color:#e6a23c">⚠ 今天打赏的微信名"空"的朋友请来找我认领游戏名称，我暂且将您命名为 Kong。</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">三、商店价格</p>
+      <p>1. 新增 38 个商店物品固定售价兜底（基础工具 5,000 / 实习护符 250,000）。</p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">四、快速导入数据脚本教程</p>
+      <p>1. 左侧栏新增图文教程页面，从脚本安装到数据导入细致教学。</p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">五、导出脚本更新</p>
+      <p>1. 茶叶自动导出：读取每个技能当前喝的茶，茶槽里有就导出，不跳过已过期茶叶。</p>
+      <p>2. 修复神龛：读取个人等级而非公会等级。</p>
+      <p>3. 房屋等级修正：当没修建房屋时会设置成0级，而非四级。</p>
+      <p style="margin-top:8px">📥 <a href="https://wormhole.app/44BX8p#04s85C2cWvQ0XOWNu51Lzw" target="_blank" style="color:#409eff">脚本下载（免梯子）</a> — 24小时有效</p>
 
       <p style="color:#909399;font-size:12px;margin-top:16px">每个版本首次打开弹出，关闭后不再重复显示</p>
     </div>
 
     <!-- English Announcement -->
-    <div v-else style="line-height:2;font-size:14px">
-      <p style="font-weight:bold;margin-bottom:8px">1. One-Click Data Script</p>
-      <p>1.1 Import mapping fixed: charms, back, body, legs and house imports now work correctly for all slots.</p>
-      <p>1.2 Bulk export: high-quality gear (body, legs, charms) can now be extracted in one batch from your warehouse.</p>
-      <p>1.3 Life skill sync: one-click life skill level extraction supported — no more manual entry.</p>
-      <p style="margin-top:4px">Script: <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Greasy Fork</a></p>
+        <div v-else style="line-height:2;font-size:14px">
+      <p style="font-weight:bold;margin-bottom:8px">1. Profit Board Fixes</p>
+      <p>1.1 Cache fix: prices now refresh correctly when switching buy/sell mode (dashboard, jungle, super jungle).</p>
+      <p>1.2 Crafting Pure Train: no longer blank with start tier selected; charms auto-excluded in pure train mode.</p>
+      <p>1.3 Exclude Equipment: now keeps multi-step chains, only hides single-step manufactured gear.</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">2. Profit Board</p>
-      <p>2.1 Pure Train: new toggle for Smithing/Crafting/Tailoring — filters to base material chains only. Combat drops and catalysts excluded.</p>
-      <p>2.2 Material chain split: Tailoring now supports All / Cloth / Leather modes with independent tier filtering.</p>
-      <p>2.3 Shrine import: shrine data import and profit calculation support added.</p>
-      <p>2.4 Tier crafting: multi-step chains now have start material & end tier buttons for custom chain config.</p>
-      <p>2.5 Preset compare: load two presets side by side to compare profit differences at a glance.</p>
-      <p>2.6 Load optimization: page renders first, data loads async — no more long white screens on slow machines.</p>
-      <p>2.7 Tier fix: cloth tier name "辐光" corrected to "光辉".</p>
-      <p>2.8 Changelog popup: first visit per version shows update notes; won't show again once dismissed.</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">2. Material Chain Improvements</p>
+      <p>2.1 Tailoring tiers: added Lv90 to Leather, Lv85 to Cloth; "All" mode cap raised 75→95.</p>
+      <p>2.2 Pure Train tooltip: updated to use official in-game item names.</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">3. Community</p>
-      <p>3.1 Tutorial: step-by-step guide from script install to data import — with screenshots.</p>
-      <p>3.2 Feedback form: submit bug reports and feature requests directly to the dev.</p>
-      <p>3.3 New sponsors: thanks to Laulau01 (¥28.88) and Kong (¥30)!</p>
-      <p style="color:#e6a23c">⚠ Please include your in-game nickname when donating — this is important!</p>
-      <p style="color:#e6a23c">⚠ Donor with WeChat name "空" — please contact me to claim your nickname! Temporarily named you Kong.</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">3. Shop Prices</p>
+      <p>3.1 Added hardcoded fallback prices for 38 shop items (basic tools 5,000 / apprentice charms 250,000).</p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">4. Quick Data Import Tutorial</p>
+      <p>4.1 New illustrated tutorial in the sidebar: step-by-step from script install to data import.</p>
+
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">5. Export Script Updates</p>
+      <p>5.1 Tea auto-export: reads active tea per skill, exports if present in tea slot, no longer skips expired tea.</p>
+      <p>5.2 Shrine fix: now reads personal level instead of guild level.</p>
+      <p>5.3 House level fix: sets to level 0 when no house is built, instead of level 4.</p>
+      <p style="margin-top:8px">📥 <a href="https://wormhole.app/44BX8p#04s85C2cWvQ0XOWNu51Lzw" target="_blank" style="color:#409eff">Script Download (no VPN)</a> — valid 24h</p>
 
       <p style="color:#909399;font-size:12px;margin-top:16px">Shown once per version. Close to dismiss.</p>
     </div>
@@ -508,7 +506,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
 
                 <el-form-item :label="t('纯净火车')">
                   <el-switch v-model="ldSearchData.pureOnly" @change="handleSearchLD" />
-                  <el-tooltip :content="t('仅显示所有原料均来自当前材质链的产物，排除混入战斗/稀有掉落（黄油、树枝、毛线）的装备')" placement="top">
+                  <el-tooltip :content="t('仅显示所有原料均来自当前材质链的产物，排除混入战斗/稀有掉落（精通之油、洞察之枝、专精之线）的装备')" placement="top">
                     <el-icon style="margin-left:6px;cursor:help;color:#909399"><QuestionFilled /></el-icon>
                   </el-tooltip>
                 </el-form-item>

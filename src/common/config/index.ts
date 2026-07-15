@@ -55,3 +55,44 @@ export const SHRINE_CONFIG: Record<string, { key: NoncombatStatsKey, perLevel: n
   rare: { key: "RareFind", perLevel: 0.01, name: "稀有神龛", label: "稀有发现" },
   scholar: { key: "Experience", perLevel: 0.005, name: "学者神龛", label: "经验" }
 }
+
+// 商店固定售价（游戏内杂货铺固定价格，不受市场波动影响）
+export const SHOP_FIXED_PRICES: Record<string, number> = {
+  // 基础工具/武器 — 5,000 金币
+  "/items/cheese_sword": 5000,
+  "/items/cheese_spear": 5000,
+  "/items/cheese_mace": 5000,
+  "/items/wooden_crossbow": 5000,
+  "/items/wooden_bow": 5000,
+  "/items/wooden_water_staff": 5000,
+  "/items/wooden_nature_staff": 5000,
+  "/items/wooden_fire_staff": 5000,
+  "/items/cheese_brush": 5000,
+  "/items/cheese_scissors": 5000,
+  "/items/cheese_axe": 5000,
+  "/items/cheese_hammer": 5000,
+  "/items/cheese_chisel": 5000,
+  "/items/cheese_needle": 5000,
+  "/items/cheese_spatula": 5000,
+  "/items/cheese_pot": 5000,
+  "/items/cheese_distiller": 5000,
+  "/items/cheese_enhancer": 5000,
+  // 实习护符 — 250,000 金币
+  "/items/apprentice_milking_charm": 250000,
+  "/items/apprentice_foraging_charm": 250000,
+  "/items/apprentice_woodcutting_charm": 250000,
+  "/items/apprentice_cheesesmithing_charm": 250000,
+  "/items/apprentice_crafting_charm": 250000,
+  "/items/apprentice_tailoring_charm": 250000,
+  "/items/apprentice_cooking_charm": 250000,
+  "/items/apprentice_brewing_charm": 250000,
+  "/items/apprentice_alchemy_charm": 250000,
+  "/items/apprentice_enhancing_charm": 250000,
+  "/items/apprentice_stamina_charm": 250000,
+  "/items/apprentice_intelligence_charm": 250000,
+  "/items/apprentice_attack_charm": 250000,
+  "/items/apprentice_defense_charm": 250000,
+  "/items/apprentice_melee_charm": 250000,
+  "/items/apprentice_ranged_charm": 250000,
+  "/items/apprentice_magic_charm": 250000,
+}

@@ -676,8 +676,10 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
               enhanceLevel: capeLevel ?? (bestBack ? (inventoryMap[bestBack.hrid] || 0) : undefined)
             } : { ...defaultItem.back },
             charm: { type: "charm", hrid: charmHrid, enhanceLevel: charmLevel },
-            houseLevel: houseLevels[action] ?? defaultItem.houseLevel,
-            tea: structuredClone(defaultItem.tea)
+            houseLevel: houseLevels[action] ?? 0,
+            tea: ((data.actionTeas && (data.actionTeas as Record<string, string[]>)[action]) || []).length > 0
+              ? (data.actionTeas as Record<string, string[]>)[action]
+              : structuredClone(defaultItem.tea)
           })
         }
       } else if (data.player?.equipment) {
@@ -744,8 +746,10 @@ function processImportData(jsonStr: string, shouldMerge: boolean, mergeTargetInd
               hrid: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.itemHrid : (useDefaults ? defaultItem.charm.hrid : undefined),
               enhanceLevel: charmData?.itemHrid && doesEquipmentApply(charmData.itemHrid, action) ? charmData.enhancementLevel : (useDefaults ? defaultItem.charm.enhanceLevel : undefined)
             },
-            houseLevel: houseLevels[action] ?? defaultItem.houseLevel,
-            tea: structuredClone(defaultItem.tea)
+            houseLevel: houseLevels[action] ?? 0,
+            tea: ((data.actionTeas && (data.actionTeas as Record<string, string[]>)[action]) || []).length > 0
+              ? (data.actionTeas as Record<string, string[]>)[action]
+              : structuredClone(defaultItem.tea)
           })
         }
       } else {

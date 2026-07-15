@@ -10,8 +10,9 @@ const { t } = locales.global
 /** 查 */
 export async function getDataApi(params: any) {
   let profitList: EnhanceCalculator[] = []
-  if (useGameStoreOutside().getJunglestCache()) {
-    profitList = useGameStoreOutside().getJunglestCache()
+  const junglestKey = `${useGameStoreOutside().marketData!.timestamp}-buy${useGameStoreOutside().buyStatus}-sell${useGameStoreOutside().sellStatus}`
+  if (useGameStoreOutside().getJunglestCacheByKey(junglestKey)) {
+    profitList = useGameStoreOutside().getJunglestCacheByKey(junglestKey)
   } else {
     await new Promise(resolve => setTimeout(resolve, 300))
     const startTime = Date.now()
@@ -20,7 +21,7 @@ export async function getDataApi(params: any) {
     } catch (e: any) {
       console.error(e)
     }
-    useGameStoreOutside().setJunglestCache(profitList)
+    useGameStoreOutside().setJunglestCacheByKey(profitList, junglestKey)
     ElMessage.success(t("计算完成，耗时{0}秒", [(Date.now() - startTime) / 1000]))
   }
 

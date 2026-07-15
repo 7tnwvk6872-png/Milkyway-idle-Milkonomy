@@ -162,7 +162,7 @@ function loadData() {
       // 手动添加的赞助者
       const hardcoded: Sponsor[] = [
         { approved: true, nickname: "Laulau01", platform: "微信", amount: 28.88 },
-        { approved: true, nickname: "Kong", platform: "微信", amount: 30 },
+        { approved: true, nickname: "Blue", platform: "微信", amount: 30 },
       ]
       for (const h of hardcoded) {
         const existing = map.get(h.nickname!)

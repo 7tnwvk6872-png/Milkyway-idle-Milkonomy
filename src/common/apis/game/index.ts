@@ -3,6 +3,7 @@ import type { AchievementTierDetail, ActionDetail, CommunityBuffDetail, DropTabl
 import type { MarketData, MarketItemPrice } from "~/market"
 import deepFreeze from "deep-freeze-strict"
 import { COIN_HRID, PriceStatus, useGameStoreOutside } from "@/pinia/stores/game"
+import { SHOP_FIXED_PRICES } from "@/common/config"
 
 // 把Proxy扒下来，提高性能
 const game = {
@@ -192,10 +193,13 @@ export function getPriceOf(hrid: string, level: number = 0, buyStatus: PriceStat
     return _priceCache[cacheKey]
   }
   const shopItem = getGameDataApi().shopItemDetailMap[`/shop_items/${item.hrid.split("/").pop()}`]
+  const fixedShopPrice = SHOP_FIXED_PRICES[item.hrid]
   const price = (getMarketDataApi().marketData[item.hrid]?.[0]) || { ask: -1, bid: -1, avg: -1, vol: -1 }
 
-  if (shopItem && shopItem.costs[0].itemHrid === COIN_HRID) {
-    price.ask = price.ask === -1 ? shopItem.costs[0].count : Math.min(price.ask, shopItem.costs[0].count)
+  // 商店价格：优先取 API 数据，兜底取硬编码
+  const shopPrice = shopItem?.costs?.[0]?.itemHrid === COIN_HRID ? shopItem.costs[0].count : fixedShopPrice
+  if (shopPrice) {
+    price.ask = price.ask === -1 ? shopPrice : Math.min(price.ask, shopPrice)
   }
   _priceCache[cacheKey] = convertPriceOfStatus(price, buyStatus, sellStatus)
 

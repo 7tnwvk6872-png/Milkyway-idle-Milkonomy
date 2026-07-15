@@ -13,7 +13,8 @@ import { handlePage, handlePush, handleSearch, handleSort } from "../utils"
 
 const { t } = locales.global
 /** 查 */
-export async function getDataApi(params: any, cacheKey: string = "jungle") {
+export async function getDataApi(params: any, cacheKey?: string) {
+  cacheKey = cacheKey || `jungle-buy${useGameStoreOutside().buyStatus}-sell${useGameStoreOutside().sellStatus}`
   let profitList: WorkflowCalculator[] = []
   if (useGameStoreOutside().getJungleCache(cacheKey)) {
     profitList = useGameStoreOutside().getJungleCache(cacheKey)

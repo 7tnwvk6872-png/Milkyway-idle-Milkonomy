@@ -110,7 +110,7 @@ export const useGameStore = defineStore("game", {
     enhanposerCache: {} as { [time: number]: WorkflowCalculator[] },
     manualchemyCache: {} as { [time: number]: Calculator[] },
     jungleCache: {} as { [key: string]: WorkflowCalculator[] },
-    junglestCache: {} as { [time: number]: EnhanceCalculator[] },
+    junglestCache: {} as { [key: string]: EnhanceCalculator[] },
     inheritCache: {} as { [time: number]: ManufactureCalculator[] },
     decomposeCache: {} as { [time: number]: DecomposeCalculator[] },
     secret: loadSecret(),
@@ -256,9 +256,15 @@ export const useGameStore = defineStore("game", {
     getJunglestCache() {
       return this.junglestCache[this.marketData!.timestamp]
     },
+    getJunglestCacheByKey(key: string) {
+      return this.junglestCache[key]
+    },
     setJunglestCache(list: EnhanceCalculator[]) {
       this.clearJunglestCache()
       this.junglestCache[this.marketData!.timestamp] = list
+    },
+    setJunglestCacheByKey(list: EnhanceCalculator[], key: string) {
+      this.junglestCache[key] = list
     },
     clearJunglestCache() {
       this.junglestCache = {}
