@@ -185,14 +185,6 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
         }
       }
       const projectPrefixes = Array.from(allProjectLabels)
-      // 剥离材质后缀："神圣奶酪"→"神圣"、"粗糙皮革"→"粗糙"、"棉花布料"→"棉花"
-      const fullProjectPrefixes = new Set<string>(projectPrefixes)
-      for (const label of projectPrefixes) {
-        for (const suffix of ['奶酪', '皮革', '布料']) {
-          const short = label.replace(suffix, '')
-          if (short && short !== label) fullProjectPrefixes.add(short)
-        }
-      }
 
       // 选中链的档位标签（用于非纯纯净火车时至少一个匹配即可）
       let selectedLabels: string[]
