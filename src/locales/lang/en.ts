@@ -266,6 +266,8 @@ export default {
   "提交后请等待作者审核，审核通过后会显示在打赏者名单中": "Please wait for review. Once approved, your name will appear in the donor list.",
   "提交成功，请等待审核": "Submitted! Please wait for review.",
   "提交成功，感谢你的反馈！": "Submitted! Thanks for your feedback!",
+  "使用教程": "Tutorial",
+  "跟着步骤走，3 分钟搞定数据导入": "Follow the steps, set up in 3 minutes",
   "建议反馈": "Feedback",
   "如果你有任何建议或发现了 Bug，欢迎提交反馈。": "Found a bug or have a suggestion? Let me know!",
   "你的每一条反馈我都会认真查看，感谢你的帮助！": "Every piece of feedback is appreciated. Thanks for helping!",

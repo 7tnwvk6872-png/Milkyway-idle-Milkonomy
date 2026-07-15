@@ -10,6 +10,23 @@ const { t } = locale.global
  * 在构建公开版本时，这些路由和对应的页面文件将不会被打包
  */
 export const privateRoutes: RouteRecordRaw[] = [
+    {
+    path: "/",
+    component: Layouts,
+    redirect: "/tutorial",
+    children: [
+      {
+        path: "tutorial",
+        component: () => import("@/pages/tutorial/index.vue"),
+        name: "Tutorial",
+        meta: {
+          title: t("使用教程"),
+          elIcon: "Guide",
+          affix: true
+        }
+      }
+    ]
+  },
   {
     path: "/",
     component: Layouts,
