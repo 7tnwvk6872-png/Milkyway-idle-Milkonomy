@@ -67,19 +67,24 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
   }
   profitList = handleVolume1hSearch(profitList, params)
 
-  // 排除装备：仅对制造/锻造/裁缝页面生效，冲泡/烹饪等不受影响
-  if (params.banEquipment) {
+  // 排除装备：仅当项目选中时生效，用装备类型判断而非 ingredientList
+  if (params.banEquipment && params.project) {
     const normProject = normalizeProject(params.project || '')
-    const skipProjects = ['冲泡', '烹饪', '挤奶', '采摘', '伐木', '点金', '分解', '转化',
-      'Brewing', 'Cooking', 'Milking', 'Foraging', 'Woodcutting', 'Coinify', 'Decompose', 'Transmute']
-    if (!normProject || !skipProjects.includes(normProject)) {
+    const skipProjects = ['冲泡', '烹饪', '挤奶', '采摘', '伐木', '点金', '分解', '转化', '炼金', '强化',
+      'Brewing', 'Cooking', 'Milking', 'Foraging', 'Woodcutting', 'Coinify', 'Decompose', 'Transmute', 'Alchemy', 'Enhancing']
+    if (!skipProjects.includes(normProject)) {
       profitList = profitList.filter((item: any) => {
         const calcList = item.calculatorList
-        // 多步 workflow（原材料链条）保留
+        // 多步 workflow 保留
         if (Array.isArray(calcList) && calcList.length >= 1) return true
-        // 单步制造（装备）隐藏，除非是采集（ingredientList 为空）
-        const il = item.ingredientListWithPrice || item.ingredientList || []
-        return il.length === 0
+        // 物品本身是装备类型（body/legs/head/hands/feet/back/charm）→ 排除
+        const eqType = item.item?.equipmentDetail?.type
+        if (eqType) {
+          const slot = (eqType as string).split('/').pop()
+          const equipSlots = ['body', 'legs', 'head', 'hands', 'feet', 'back', 'charm']
+          if (equipSlots.includes(slot!)) return false
+        }
+        return true
       })
     }
   }
