@@ -3,32 +3,30 @@ import { useI18n } from "vue-i18n"
 
 const { t } = useI18n()
 
-// 用 Vite 的 URL import 加载截图
-const stepImgs = {
-  step1: new URL("@@/assets/images/tutorial/step-1-copy.jpg", import.meta.url).href,
-  step2: new URL("@@/assets/images/tutorial/step-2-preset.jpg", import.meta.url).href,
-  step3: new URL("@@/assets/images/tutorial/step-3-buttons.jpg", import.meta.url).href,
-  step4: new URL("@@/assets/images/tutorial/step-4-import.jpg", import.meta.url).href,
-}
+// 静态导入截图（Vite 打包时会处理）
+import step1Img from "@@/assets/images/tutorial/step-1-copy.jpg"
+import step2Img from "@@/assets/images/tutorial/step-2-preset.jpg"
+import step3Img from "@@/assets/images/tutorial/step-3-buttons.jpg"
+import step4Img from "@@/assets/images/tutorial/step-4-import.jpg"
 
 const steps = [
   {
-    img: stepImgs.step1,
+    img: step1Img,
     title: "第一步：安装脚本，导出数据",
     text: "在游戏里点击顶部绿色「Milkonomy」按钮，数据会自动复制到剪贴板，弹出「Copied!」提示即成功。"
   },
   {
-    img: stepImgs.step2,
+    img: step2Img,
     title: "第二步：切换预设",
     text: "点击绿色数字切换预设方案（0-9），每个预设独立保存装备、技能、房子数据。点「对比」可同时查看两个预设的利润差异。"
   },
   {
-    img: stepImgs.step3,
+    img: step3Img,
     title: "第三步：导入 / 导出数据",
     text: "「导入」粘贴剪贴板数据，「导出」备份当前预设，「快速导入数据」一键覆盖当前预设。"
   },
   {
-    img: stepImgs.step4,
+    img: step4Img,
     title: "第四步：粘贴并确认",
     text: "在弹窗中粘贴 JSON 数据。勾选「数据升级」可选目标预设合并数据。确认无误后点「确定」完成导入。"
   }

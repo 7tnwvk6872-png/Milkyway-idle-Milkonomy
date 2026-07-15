@@ -176,11 +176,13 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
         }
       }
       const projectPrefixes = Array.from(allProjectLabels)
-      // 加上"奶酪"剥离后的短前缀（如"神圣奶酪"→"神圣"）
+      // 剥离材质后缀："神圣奶酪"→"神圣"、"粗糙皮革"→"粗糙"、"棉花布料"→"棉花"
       const fullProjectPrefixes = new Set<string>(projectPrefixes)
       for (const label of projectPrefixes) {
-        const short = label.replace('奶酪', '')
-        if (short && short !== label) fullProjectPrefixes.add(short)
+        for (const suffix of ['奶酪', '皮革', '布料']) {
+          const short = label.replace(suffix, '')
+          if (short && short !== label) fullProjectPrefixes.add(short)
+        }
       }
 
       // 选中链的档位标签（用于非纯纯净火车时至少一个匹配即可）
@@ -193,13 +195,26 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
       }
       const selectedPrefixes = new Set<string>(selectedLabels)
       for (const label of selectedLabels) {
-        const short = label.replace('奶酪', '')
-        if (short && short !== label) selectedPrefixes.add(short)
+        for (const suffix of ['奶酪', '皮革', '布料']) {
+          const short = label.replace(suffix, '')
+          if (short && short !== label) selectedPrefixes.add(short)
+        }
       }
 
       const gameData = getGameDataApi()
       const skipNames = new Set(['精通之油', '洞察之枝', '专精之线',
         'Butter Of Proficiency', 'Branch Of Insight', 'Thread Of Expertise'])
+
+      const before = profitList.length
+      console.log('[pure] project=', normProject, 'pureOnly=', params.pureOnly, 'chainKey=', params.tierChainKey, 'before=', before)
+      console.log('[pure] projectPrefixes=', Array.from(fullProjectPrefixes))
+      console.log('[pure] selectedPrefixes=', Array.from(selectedPrefixes))
+      const sample = profitList.slice(0, 5).map((item: any) => {
+        const il = item.ingredientListWithPrice || item.ingredientList || []
+        const ingNames = il.map((ing: any) => t(gameData.itemDetailMap[ing.hrid]?.name || ing.hrid))
+        return (item.name || item.item?.name) + ' 原料=[' + ingNames.join(',') + ']'
+      })
+      console.log('[pure] sample:', JSON.stringify(sample, null, 2))
 
       profitList = profitList.filter((item: any) => {
         const ingrList = item.ingredientListWithPrice || item.ingredientList || []
@@ -230,6 +245,7 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
         return mainIngs.some(ing =>
           Array.from(selectedPrefixes).some((p: string) => ing.name.startsWith(p)))
       })
+      console.log('[pure] after filter:', profitList.length)
     }
   }
 
