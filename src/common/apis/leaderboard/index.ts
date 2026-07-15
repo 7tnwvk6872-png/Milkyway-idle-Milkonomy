@@ -67,19 +67,21 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
   }
   profitList = handleVolume1hSearch(profitList, params)
 
-  // 排除装备：仅对制造/锻造/裁缝生效，保留多步链条，排除单步制造装备
+  // 排除装备：仅对制造/锻造/裁缝页面生效，冲泡/烹饪等不受影响
   if (params.banEquipment) {
-    const equipmentActions = ['crafting', 'cheesesmithing', 'tailoring']
-    profitList = profitList.filter((item: any) => {
-      // 非制造/锻造/裁缝的物品不受影响
-      if (!equipmentActions.includes(item.action)) return true
-      const calcList = item.calculatorList
-      // 多步 workflow（原材料链条）保留
-      if (Array.isArray(calcList) && calcList.length >= 1) return true
-      // 单步制造（装备）隐藏，除非是采集（ingredientList 为空）
-      const il = item.ingredientListWithPrice || item.ingredientList || []
-      return il.length === 0
-    })
+    const normProject = normalizeProject(params.project || '')
+    const skipProjects = ['冲泡', '烹饪', '挤奶', '采摘', '伐木', '点金', '分解', '转化',
+      'Brewing', 'Cooking', 'Milking', 'Foraging', 'Woodcutting', 'Coinify', 'Decompose', 'Transmute']
+    if (!normProject || !skipProjects.includes(normProject)) {
+      profitList = profitList.filter((item: any) => {
+        const calcList = item.calculatorList
+        // 多步 workflow（原材料链条）保留
+        if (Array.isArray(calcList) && calcList.length >= 1) return true
+        // 单步制造（装备）隐藏，除非是采集（ingredientList 为空）
+        const il = item.ingredientListWithPrice || item.ingredientList || []
+        return il.length === 0
+      })
+    }
   }
 
   // 逐级制作 / 起始材质筛选（仅对 workflow 多步制作生效）
