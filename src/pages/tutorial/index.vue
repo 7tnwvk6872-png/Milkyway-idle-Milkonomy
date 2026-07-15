@@ -3,32 +3,26 @@ import { useI18n } from "vue-i18n"
 
 const { t } = useI18n()
 
-// 静态导入截图（Vite 打包时会处理）
-import step1Img from "@@/assets/images/tutorial/step-1-copy.jpg"
-import step2Img from "@@/assets/images/tutorial/step-2-preset.jpg"
-import step3Img from "@@/assets/images/tutorial/step-3-buttons.jpg"
-import step4Img from "@@/assets/images/tutorial/step-4-import.jpg"
-
 const steps = [
   {
-    img: step1Img,
+    imgs: ["/tutorial/step-1-a.jpg", "/tutorial/step-1-b.jpg"],
     title: "第一步：安装脚本，导出数据",
-    text: "在游戏里点击顶部绿色「Milkonomy」按钮，数据会自动复制到剪贴板，弹出「Copied!」提示即成功。"
+    text: "在游戏里点击顶部绿色「Milkonomy」按钮，弹出「Copied!」即导出成功。"
   },
   {
-    img: step2Img,
+    imgs: ["/tutorial/step-2-preset.jpg"],
     title: "第二步：切换预设",
-    text: "点击绿色数字切换预设方案（0-9），每个预设独立保存装备、技能、房子数据。点「对比」可同时查看两个预设的利润差异。"
+    text: "点击绿色数字切换预设（0-9），点「对比」同时查看两个预设的利润差异。"
   },
   {
-    img: step3Img,
-    title: "第三步：导入 / 导出数据",
-    text: "「导入」粘贴剪贴板数据，「导出」备份当前预设，「快速导入数据」一键覆盖当前预设。"
+    imgs: ["/tutorial/step-3-buttons.jpg"],
+    title: "第三步：导入数据",
+    text: "点「快速导入数据」一键覆盖当前预设，或点「导入」选择性粘贴。"
   },
   {
-    img: step4Img,
+    imgs: ["/tutorial/step-4-import.jpg"],
     title: "第四步：粘贴并确认",
-    text: "在弹窗中粘贴 JSON 数据。勾选「数据升级」可选目标预设合并数据。确认无误后点「确定」完成导入。"
+    text: "粘贴 JSON 数据，可选「数据升级」合并到其他预设，确认后点「确定」。"
   }
 ]
 </script>
@@ -47,8 +41,14 @@ const steps = [
           <h3>{{ step.title }}</h3>
         </div>
         <div class="step-body">
-          <div class="step-img">
-            <img :src="step.img" :alt="step.title" />
+          <div class="step-imgs">
+            <img
+              v-for="(img, j) in step.imgs"
+              :key="j"
+              :src="img"
+              :alt="step.title + ' - 图' + (j + 1)"
+              class="step-img"
+            />
           </div>
           <p class="step-text">{{ step.text }}</p>
         </div>
@@ -130,16 +130,18 @@ const steps = [
   padding-left: 52px;
 }
 
+.step-imgs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
 .step-img {
   border-radius: 8px;
-  overflow: hidden;
   background: #1a1a2e;
-  margin-bottom: 12px;
-
-  img {
-    width: 100%;
-    display: block;
-  }
+  max-width: 100%;
+  flex: 1 1 280px;
 }
 
 .step-text {

@@ -161,6 +161,15 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
     const normProject = normalizeProject(params.project || '')
     const chainList = TIER_CHAINS[normProject]
     if (chainList) {
+      // 先按项目/动作类型过滤，只保留该项目下的物品
+      const projectActionMap: Record<string, string> = {
+        '裁缝': 'tailoring', '锻造': 'cheesesmithing', '制造': 'crafting',
+        '炼金': 'alchemy', '烹饪': 'cooking', '冲泡': 'brewing'
+      }
+      const projAction = projectActionMap[normProject]
+      if (projAction) {
+        profitList = profitList.filter((item: any) => item.action === projAction)
+      }
       // 收集所有合法原料前缀：当前项目下所有链 + 制造板甲需要锻造链奶酪
       const allProjectLabels = new Set<string>()
       for (const chain of chainList) {
@@ -205,17 +214,6 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
       const skipNames = new Set(['精通之油', '洞察之枝', '专精之线',
         'Butter Of Proficiency', 'Branch Of Insight', 'Thread Of Expertise'])
 
-      const before = profitList.length
-      console.log('[pure] project=', normProject, 'pureOnly=', params.pureOnly, 'chainKey=', params.tierChainKey, 'before=', before)
-      console.log('[pure] projectPrefixes=', Array.from(fullProjectPrefixes))
-      console.log('[pure] selectedPrefixes=', Array.from(selectedPrefixes))
-      const sample = profitList.slice(0, 5).map((item: any) => {
-        const il = item.ingredientListWithPrice || item.ingredientList || []
-        const ingNames = il.map((ing: any) => t(gameData.itemDetailMap[ing.hrid]?.name || ing.hrid))
-        return (item.name || item.item?.name) + ' 原料=[' + ingNames.join(',') + ']'
-      })
-      console.log('[pure] sample:', JSON.stringify(sample, null, 2))
-
       profitList = profitList.filter((item: any) => {
         const ingrList = item.ingredientListWithPrice || item.ingredientList || []
         // 无原料列表：无法判断，保留
@@ -236,16 +234,15 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
         if (mainIngs.length === 0) return true
 
         if (params.pureOnly) {
-          // 纯净模式：所有主原料必须匹配该项目的合法材质等级
+          // 纯净模式：所有主原料必须匹配该项目的完整材质标签（不用短前缀）
           return mainIngs.every(ing =>
-            Array.from(fullProjectPrefixes).some((p: string) => ing.name.startsWith(p)))
+            projectPrefixes.some((p: string) => ing.name.startsWith(p)))
         }
 
         // 普通材质链筛选：至少一个原料匹配选中链
         return mainIngs.some(ing =>
           Array.from(selectedPrefixes).some((p: string) => ing.name.startsWith(p)))
       })
-      console.log('[pure] after filter:', profitList.length)
     }
   }
 

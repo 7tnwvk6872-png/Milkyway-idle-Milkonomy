@@ -80,7 +80,7 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
         { itemLevel: 35, label: "哥布林皮革" },
         { itemLevel: 55, label: "野兽皮革" },
         { itemLevel: 75, label: "暗影皮革" },
-        { itemLevel: 85, label: "狮鹫" },
+        { itemLevel: 85, label: "狮鹫皮革" },
         { itemLevel: 95, label: "Lv95" }
       ]
     },
