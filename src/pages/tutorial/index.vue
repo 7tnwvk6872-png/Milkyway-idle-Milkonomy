@@ -5,22 +5,22 @@ const { t } = useI18n()
 
 const steps = [
   {
-    imgs: ["/tutorial/step-1-a.jpg", "/tutorial/step-1-b.jpg"],
+    imgs: [`${import.meta.env.BASE_URL}tutorial/step-1-a.jpg`, `${import.meta.env.BASE_URL}tutorial/step-1-b.jpg`],
     title: "第一步：安装脚本，导出数据",
     text: "在游戏里点击顶部绿色「Milkonomy」按钮，弹出「Copied!」即导出成功。"
   },
   {
-    imgs: ["/tutorial/step-2-preset.jpg"],
+    imgs: [`${import.meta.env.BASE_URL}tutorial/step-2-preset.jpg`],
     title: "第二步：切换预设",
     text: "点击绿色数字切换预设（0-9），点「对比」同时查看两个预设的利润差异。"
   },
   {
-    imgs: ["/tutorial/step-3-buttons.jpg"],
+    imgs: [`${import.meta.env.BASE_URL}tutorial/step-3-buttons.jpg`],
     title: "第三步：导入数据",
     text: "点「快速导入数据」一键覆盖当前预设，或点「导入」选择性粘贴。"
   },
   {
-    imgs: ["/tutorial/step-4-import.jpg"],
+    imgs: [`${import.meta.env.BASE_URL}tutorial/step-4-import.jpg`],
     title: "第四步：粘贴并确认",
     text: "粘贴 JSON 数据，可选「数据升级」合并到其他预设，确认后点「确定」。"
   }
