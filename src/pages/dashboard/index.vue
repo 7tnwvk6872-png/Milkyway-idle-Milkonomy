@@ -370,7 +370,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
 </script>
 
 <template>
-  <el-dialog v-model="announceVisible" :title="locale === 'en' ? 'Milkonomy v2.2.0 Update' : 'Milkonomy v2.2.0 更新'" width="560px" :close-on-click-modal="false" @close="announceDismiss">
+  <el-dialog v-model="announceVisible" :title="locale === 'en' ? 'Milkonomy v2.2.1 Update' : 'Milkonomy v2.2.1 更新'" width="560px" :close-on-click-modal="false" @close="announceDismiss">
     <!-- 中文公告 -->
     <div v-if="locale !== 'en'" style="line-height:2;font-size:14px">
       <p style="font-weight:bold;margin-bottom:8px">一、一键导入数据脚本</p>
@@ -390,8 +390,9 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
       <p>8. 版本公告：每版本首次访问弹出更新说明，关闭后本版不再重复显示。</p>
 
       <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">三、打赏 & 反馈</p>
-      <p>1. 建议反馈：新增反馈页面，支持提交 Bug 报告和功能建议，数据直达维护者。</p>
-      <p>2. 新赞助者：感谢 Laulau01（¥28.88）和 Kong（¥30）的支持！</p>
+      <p>1. 使用教程：新增图文教程页面，从脚本安装到数据导入一步步教你用。</p>
+      <p>2. 建议反馈：新增反馈页面，支持提交 Bug 报告和功能建议，数据直达维护者。</p>
+      <p>3. 新赞助者：感谢 Laulau01（¥28.88）和 Kong（¥30）的支持！</p>
       <p style="color:#e6a23c">⚠ 请在打赏时留下您的游戏昵称，这很重要！！</p>
       <p style="color:#e6a23c">⚠ 今天打赏的微信名"空"的朋友请来找我认领游戏名称，我暂且将您命名为 Kong。</p>
 
@@ -417,8 +418,9 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
       <p>2.8 Changelog popup: first visit per version shows update notes; won't show again once dismissed.</p>
 
       <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">3. Community</p>
-      <p>3.1 Feedback form: new feedback page — submit bug reports and feature requests directly to the dev.</p>
-      <p>3.2 New sponsors: thanks to Laulau01 (¥28.88) and Kong (¥30)!</p>
+      <p>3.1 Tutorial: step-by-step guide from script install to data import — with screenshots.</p>
+      <p>3.2 Feedback form: submit bug reports and feature requests directly to the dev.</p>
+      <p>3.3 New sponsors: thanks to Laulau01 (¥28.88) and Kong (¥30)!</p>
       <p style="color:#e6a23c">⚠ Please include your in-game nickname when donating — this is important!</p>
       <p style="color:#e6a23c">⚠ Donor with WeChat name "空" — please contact me to claim your nickname! Temporarily named you Kong.</p>
 

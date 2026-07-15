@@ -86,25 +86,24 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
       chainPrefixes.push(...extra)
     }
   }
-  if (hasStartTier || hasEndTier || chainPrefixes.length > 0) {
+  if (hasStartTier || hasEndTier) {
     profitList = profitList.filter((item: any) => {
-      // 只有 workflow（多步制作）才有 calculatorList，非 workflow 不参与档位筛选
       const calcList = item.calculatorList
       if (!Array.isArray(calcList) || calcList.length < 1) return false
-      // 起点材质：calculatorList[0] 的产物 itemLevel（不受 configs 引用污染）
       const firstCal = Array.isArray(calcList[0]) ? calcList[0][0] : calcList[0]
       const startLevel = firstCal?.item?.itemLevel
-      // 终点材质：workflow 最终产物 itemLevel
       const endLevel = item.item?.itemLevel
       if (hasStartTier && startLevel !== parseTierLevel(startTier)) return false
       if (hasEndTier && endLevel !== parseTierLevel(endTier)) return false
-      // 材质链区分：产物名必须匹配链前缀
-      if (chainPrefixes.length > 0) {
-        const rawName: string = item.name || item.item?.name || ''
-        const itemName: string = rawName.match(/^[一-龥]/) ? rawName : t(rawName)
-        if (!chainPrefixes.some(p => itemName.startsWith(p))) return false
-      }
       return true
+    })
+  }
+  // 材质链前缀筛选：只保留产物名匹配选中链的物品
+  if (chainPrefixes.length > 0) {
+    profitList = profitList.filter((item: any) => {
+      const rawName: string = item.name || item.item?.name || ''
+      const itemName: string = rawName.match(/^[一-龥]/) ? rawName : t(rawName)
+      return chainPrefixes.some(p => itemName.startsWith(p))
     })
   }
 
