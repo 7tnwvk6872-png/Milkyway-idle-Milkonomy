@@ -389,7 +389,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
       <p>2. 旧的"快速导入数据"按钮已移除，功能整合到顶部按钮栏。</p>
       <p style="font-weight:bold;margin-top:8px">四、使用教程</p>
       <p>1. 安装脚本（文末链接）→ 2. 刷新利润网和 MilkyWay Idle → 3. 点击"一键导入"即可</p>
-      <p style="margin-top:8px">📥 <a href="https://wormhole.app/mM0ERZ#Ik3EtaC8CJfkzsHJzrNPgQ" target="_blank" style="color:#409eff">一键导入脚本（非加速版本/24h有效）</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">一键导入脚本</a></p>
+      <p style="margin-top:8px">📥 <a href="https://wormhole.app/R8NzzP#v-zlaRrAMpPkGxpv_o1gcg" target="_blank" style="color:#409eff">一键导入脚本（非加速版本/24h有效）</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">一键导入脚本</a></p>
 
       <p style="color:#909399;font-size:12px;margin-top:16px">每个版本首次打开弹出，关闭后不再重复显示</p>
     </div>
@@ -410,7 +410,7 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
       <p>3.2 Old "Quick Import" button removed; functionality integrated into top action bar.</p>
       <p style="font-weight:bold;margin-top:8px">四、How to use</p>
       <p>1. Install script (link below) → 2. Refresh Milkonomy + MilkyWay Idle → 3. Click "一键导入"</p>
-      <p style="margin-top:8px">📥 <a href="https://wormhole.app/mM0ERZ#Ik3EtaC8CJfkzsHJzrNPgQ" target="_blank" style="color:#409eff">Import Script (direct/24h)</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Import Script</a></p>
+      <p style="margin-top:8px">📥 <a href="https://wormhole.app/R8NzzP#v-zlaRrAMpPkGxpv_o1gcg" target="_blank" style="color:#409eff">Import Script (direct/24h)</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Import Script</a></p>
 
       <p style="color:#909399;font-size:12px;margin-top:16px">Shown once per version. Close to dismiss.</p>
     </div>

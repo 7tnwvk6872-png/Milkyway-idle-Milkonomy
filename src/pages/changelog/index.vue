@@ -26,7 +26,7 @@
       <ol>
         <li>安装脚本（文末链接）→ 刷新利润网和 MilkyWay Idle → 点击"一键导入"即可。</li>
       </ol>
-      <p>📥 <a href="https://wormhole.app/mM0ERZ#Ik3EtaC8CJfkzsHJzrNPgQ" target="_blank" style="color:#409eff">一键导入脚本（非加速版本/24h有效）</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">一键导入脚本</a></p>
+      <p>📥 <a href="https://wormhole.app/R8NzzP#v-zlaRrAMpPkGxpv_o1gcg" target="_blank" style="color:#409eff">一键导入脚本（非加速版本/24h有效）</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">一键导入脚本</a></p>
     </template>
     <template v-else>
       <h2>v2.2.2 — 2026-07-16</h2>
@@ -53,7 +53,7 @@
       <ol>
         <li>Install script (link below) → Refresh Milkonomy + MilkyWay Idle → Click "一键导入".</li>
       </ol>
-      <p>📥 <a href="https://wormhole.app/mM0ERZ#Ik3EtaC8CJfkzsHJzrNPgQ" target="_blank" style="color:#409eff">Import Script (direct/24h)</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Import Script</a></p>
+      <p>📥 <a href="https://wormhole.app/R8NzzP#v-zlaRrAMpPkGxpv_o1gcg" target="_blank" style="color:#409eff">Import Script (direct/24h)</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Import Script</a></p>
     </template>
 
     <hr />
