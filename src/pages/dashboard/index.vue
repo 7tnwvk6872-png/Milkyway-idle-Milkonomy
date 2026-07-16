@@ -372,55 +372,45 @@ const onPriceStatusChange = usePriceStatus("dashboard-price-status")
 </script>
 
 <template>
-  <el-dialog v-model="announceVisible" :title="locale === 'en' ? 'Milkonomy v2.2.1 Update' : 'Milkonomy v2.2.1 更新'" width="560px" :close-on-click-modal="false" @close="announceDismiss">
+  <el-dialog v-model="announceVisible" :title="locale === 'en' ? 'Milkonomy v2.2.2 Update' : 'Milkonomy v2.2.2 更新'" width="560px" :close-on-click-modal="false" @close="announceDismiss">
     <!-- 中文公告 -->
         <div v-if="locale !== 'en'" style="line-height:2;font-size:14px">
-      <p style="font-weight:bold;margin-bottom:8px">一、利润网修复</p>
-      <p>1. 排行榜缓存：切换买/卖价后价格不再锁死，仪表盘、丛林、打野均修复。</p>
-      <p>2. 制造纯火车：选择起始材质后不再空白；纯净火车自动排除护符。</p>
-      <p>3. 排除装备完善：排除装备时保留多步链条，只隐藏单步制造装备。</p>
+      <p style="font-weight:bold;margin-bottom:8px">一、纯净火车修复</p>
+      <p>1. 锻造补全制造链木材前缀：锤子、枪正常显示，不再被纯净火车误过滤。</p>
+      <p>2. 纯净火车自动排除非材质链装备：护符、探照灯、火把、斗篷/披风。</p>
+      <p>3. 制造基础材质修正："木板"→"原木"，匹配游戏实际原料名。</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">二、材质链改进</p>
-      <p>1. 裁缝档位补全：皮革补 Lv90、布料补 Lv85，全部模式上限 75→95。</p>
-      <p>2. 纯净火车提示修正：黄油/树枝/毛线 → 精通之油/洞察之枝/专精之线。</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">二、超级强化分解性能优化</p>
+      <p>1. 计算结果持久化到本地存储，带市场数据时间戳校验。</p>
+      <p>2. 同一批市场数据下打开页面秒开，不再每次重算。</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">三、商店价格</p>
-      <p>1. 新增 38 个商店物品固定售价兜底（基础工具 5,000 / 实习护符 250,000）。</p>
-
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">四、快速导入数据脚本教程</p>
-      <p>1. 左侧栏新增图文教程页面，从脚本安装到数据导入细致教学。</p>
-
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">五、导出脚本更新</p>
-      <p>1. 茶叶自动导出：读取每个技能当前喝的茶，茶槽里有就导出，不跳过已过期茶叶。</p>
-      <p>2. 修复神龛：读取个人等级而非公会等级。</p>
-      <p>3. 房屋等级修正：当没修建房屋时会设置成0级，而非四级。</p>
-      <p style="margin-top:8px">📥 <a href="https://wormhole.app/44BX8p#04s85C2cWvQ0XOWNu51Lzw" target="_blank" style="color:#409eff">脚本下载（免梯子）</a> — 24小时有效</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">三、一键导入</p>
+      <p>1. 仪表盘新增"一键导入"按钮，从 Tampermonkey 脚本或剪贴板直接导入数据。</p>
+      <p>2. 旧的"快速导入数据"按钮已移除，功能整合到顶部按钮栏。</p>
+      <p style="font-weight:bold;margin-top:8px">四、使用教程</p>
+      <p>1. 安装脚本（文末链接）→ 2. 刷新利润网和 MilkyWay Idle → 3. 点击"一键导入"即可</p>
+      <p style="margin-top:8px">📥 <a href="https://wormhole.app/mM0ERZ#Ik3EtaC8CJfkzsHJzrNPgQ" target="_blank" style="color:#409eff">一键导入脚本（非加速版本/24h有效）</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">一键导入脚本</a></p>
 
       <p style="color:#909399;font-size:12px;margin-top:16px">每个版本首次打开弹出，关闭后不再重复显示</p>
     </div>
 
     <!-- English Announcement -->
         <div v-else style="line-height:2;font-size:14px">
-      <p style="font-weight:bold;margin-bottom:8px">1. Profit Board Fixes</p>
-      <p>1.1 Cache fix: prices now refresh correctly when switching buy/sell mode (dashboard, jungle, super jungle).</p>
-      <p>1.2 Crafting Pure Train: no longer blank with start tier selected; charms auto-excluded in pure train mode.</p>
-      <p>1.3 Exclude Equipment: now keeps multi-step chains, only hides single-step manufactured gear.</p>
+      <p style="font-weight:bold;margin-bottom:8px">1. Pure Train Fixes</p>
+      <p>1.1 Smithing now includes crafting wood prefixes: hammers and spears display correctly.</p>
+      <p>1.2 Pure train auto-excludes non-chain gear: charms, beacons, torches, capes/shrouds/cloaks.</p>
+      <p>1.3 Crafting base material corrected: "木板"→"原木" to match actual in-game ingredient names.</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">2. Material Chain Improvements</p>
-      <p>2.1 Tailoring tiers: added Lv90 to Leather, Lv85 to Cloth; "All" mode cap raised 75→95.</p>
-      <p>2.2 Pure Train tooltip: updated to use official in-game item names.</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">2. Super Enhance+Decompose Performance</p>
+      <p>2.1 Results cached to localStorage with market timestamp validation.</p>
+      <p>2.2 Instant load when market data unchanged; heavy computation only runs when data refreshes.</p>
 
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">3. Shop Prices</p>
-      <p>3.1 Added hardcoded fallback prices for 38 shop items (basic tools 5,000 / apprentice charms 250,000).</p>
-
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">4. Quick Data Import Tutorial</p>
-      <p>4.1 New illustrated tutorial in the sidebar: step-by-step from script install to data import.</p>
-
-      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">5. Export Script Updates</p>
-      <p>5.1 Tea auto-export: reads active tea per skill, exports if present in tea slot, no longer skips expired tea.</p>
-      <p>5.2 Shrine fix: now reads personal level instead of guild level.</p>
-      <p>5.3 House level fix: sets to level 0 when no house is built, instead of level 4.</p>
-      <p style="margin-top:8px">📥 <a href="https://wormhole.app/44BX8p#04s85C2cWvQ0XOWNu51Lzw" target="_blank" style="color:#409eff">Script Download (no VPN)</a> — valid 24h</p>
+      <p style="font-weight:bold;margin-bottom:8px;margin-top:12px">3. One-Click Import</p>
+      <p>3.1 New "一键导入" button on dashboard: imports from Tampermonkey script or clipboard.</p>
+      <p>3.2 Old "Quick Import" button removed; functionality integrated into top action bar.</p>
+      <p style="font-weight:bold;margin-top:8px">四、How to use</p>
+      <p>1. Install script (link below) → 2. Refresh Milkonomy + MilkyWay Idle → 3. Click "一键导入"</p>
+      <p style="margin-top:8px">📥 <a href="https://wormhole.app/mM0ERZ#Ik3EtaC8CJfkzsHJzrNPgQ" target="_blank" style="color:#409eff">Import Script (direct/24h)</a> | <a href="https://greasyfork.org/zh-CN/scripts/587094-milkonomy-data-exporter" target="_blank" style="color:#409eff">Import Script</a></p>
 
       <p style="color:#909399;font-size:12px;margin-top:16px">Shown once per version. Close to dismiss.</p>
     </div>

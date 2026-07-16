@@ -1,6 +1,6 @@
 import { ref, onMounted } from 'vue'
 
-const DISMISS_KEY = 'milkonomy-announce-v2.2.1'
+const DISMISS_KEY = 'milkonomy-announce-v2.2.2'
 
 export function useAnnouncement() {
   const visible = ref(false)

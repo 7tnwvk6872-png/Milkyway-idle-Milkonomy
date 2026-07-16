@@ -339,7 +339,7 @@ const onPriceStatusChange = usePriceStatus("inherit-price-status")
                     <span v-else style="word-break:break-all;display:inline-block;max-width:180px">{{ row.result.profitPHFormat }}</span>&nbsp;
                   </span>
                   <el-link type="primary" :icon="Edit" @click="setPrice(row)">
-                    { t('自定义') }
+                    {{ t('自定义') }}
                   </el-link>
                 </template>
               </el-table-column>

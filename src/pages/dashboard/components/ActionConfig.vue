@@ -436,6 +436,28 @@ function doesEquipmentApply(itemHrid: string | undefined, action: Action): boole
   return Object.keys(item.equipmentDetail.noncombatStats).some(key => key.includes(action))
 }
 
+// 一键导入（从 localStorage 或剪贴板读取）
+async function onClipboardImport() {
+  try {
+    // 1. 从 localStorage 读取 Tampermonkey 写入的数据
+    let text = localStorage.getItem('milkonomy_last_export') || ''
+
+    // 2. 备选：读剪贴板
+    if (!text || !text.trim()) {
+      try { text = await navigator.clipboard.readText() } catch (_) {}
+    }
+
+    if (!text || !text.trim()) { ElMessage.warning(t("没有数据，请先在游戏页面导出")); return }
+    const data = JSON.parse(text.trim())
+    if (!data.skills || data.version !== 1) { ElMessage.error(t("数据格式无效")); return }
+    processImportData(text.trim(), false)
+    ElMessage.success(t("已导入"))
+  } catch (e: any) {
+    ElMessage.error(t("导入失败"))
+    console.error(e)
+  }
+}
+
 function onImportBattleSim() {
   let textareaValue = ""
   let shouldMerge = false
@@ -1004,12 +1026,18 @@ function getAchievementEffect(type: AchievementTier) {
         {{ preset.name?.substring(0, 1) }}
       </el-button>
       <el-button
-        class="ml-1 w-24px" size="small" :icon="Plus" plain
+        class="ml-1 w-32px" :icon="Plus" plain
         @click="onAdd"
       />
+      <el-button
+        class="ml-1" size="small" plain style="padding:0 10px"
+        @click="onClipboardImport"
+      >
+        {{ t("一键导入") }}
+      </el-button>
       <span style="width:1px;height:20px;background:var(--el-border-color);margin:0 4px"></span>
       <el-button
-        class="compare-trigger-btn" size="small" plain
+        class="compare-trigger-btn" size="small" plain style="padding:0 10px"
         @click="emit('toggleCompare')"
       >
         {{ t("对比") }}
@@ -1056,10 +1084,6 @@ function getAchievementEffect(type: AchievementTier) {
               </el-button>
               <el-button type="success" plain class="ml-4" @click="onExport">
                 {{ t('导出') }}
-              </el-button>
-              <span style="width:1px;height:20px;background:var(--el-border-color);margin:0 8px;display:inline-block;vertical-align:middle"></span>
-              <el-button type="warning" plain class="ml-2" @click="onImportBattleSim">
-                {{ t('快速导入数据') }}
               </el-button>
             </div>
           </template>

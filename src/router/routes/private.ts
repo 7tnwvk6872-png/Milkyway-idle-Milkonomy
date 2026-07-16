@@ -13,23 +13,6 @@ export const privateRoutes: RouteRecordRaw[] = [
     {
     path: "/",
     component: Layouts,
-    redirect: "/tutorial",
-    children: [
-      {
-        path: "tutorial",
-        component: () => import("@/pages/tutorial/index.vue"),
-        name: "Tutorial",
-        meta: {
-          title: t("使用教程"),
-          elIcon: "Guide",
-          affix: true
-        }
-      }
-    ]
-  },
-  {
-    path: "/",
-    component: Layouts,
     redirect: "/enhancest",
     children: [
       {

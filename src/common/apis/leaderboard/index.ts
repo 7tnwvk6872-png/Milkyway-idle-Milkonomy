@@ -195,14 +195,24 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
       }
       // 纯净火车：护符不走标准材质链，自动排除
       if (params.pureOnly) {
-        profitList = profitList.filter((item: any) => !item.item || getEquipmentTypeOf(item.item) !== "charm")
+        profitList = profitList.filter((item: any) => {
+          if (!item.item) return true
+          const eqType = getEquipmentTypeOf(item.item)
+          if (eqType === "charm") return false
+          const name = item.item.name || ""
+          if (name.includes("Beacon") || name.includes("探照灯")) return false
+          if (name.includes("Torch") || name.includes("火把")) return false
+          if (name.includes("Cape") || name.includes("Shroud") || name.includes("Cloak") || name.includes("斗篷") || name.includes("披风")) return false
+          return true
+        })
       }
       // 收集所有合法原料前缀：当前项目下所有链 + 制造板甲需要锻造链奶酪
       const allProjectLabels = new Set<string>()
       for (const chain of chainList) {
         for (const tier of chain.tiers) allProjectLabels.add(tier.label)
       }
-      // 制造/锻造 需要奶酪前缀（板甲 = 木材 + 奶酪）
+      // 制造需要锻造链奶酪前缀（板甲 = 木材 + 奶酪）
+      // 锻造需要制造链木材前缀（锤/枪 = 奶酪 + 原木）
       if (normProject === '制造' || normProject === '锻造') {
         const cheeseChain = TIER_CHAINS['锻造']
         if (cheeseChain) {
@@ -211,6 +221,15 @@ export async function getLeaderboardDataApi(params: Leaderboard.RequestData) {
           }
         }
       }
+      if (normProject === '制造' || normProject === '锻造') {
+        const woodChain = TIER_CHAINS['制造']
+        if (woodChain) {
+          for (const chain of woodChain) {
+            for (const tier of chain.tiers) allProjectLabels.add(tier.label)
+          }
+        }
+      }
+
       const projectPrefixes = Array.from(allProjectLabels)
 
       // 选中链的档位标签（用于非纯纯净火车时至少一个匹配即可）

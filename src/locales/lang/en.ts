@@ -300,6 +300,7 @@ export default {
   "打野爽！": "Jungle is Fun!",
   "到强化工具中查看": "View in Enhancer",
   "强化": "Enhance",
+  "强化工具": "Enhancer",
   "售价": "Selling Price",
   "物品等级": "Item Level",
   "风险": "Risk",
@@ -491,4 +492,5 @@ export default {
   "请选择不同的预设进行对比": "Please select different presets to compare",
   "更新公告": "Update Notes",
   "知道了": "Got it",
+  "一键导入": "1-Click Import"
 }

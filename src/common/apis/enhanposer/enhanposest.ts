@@ -10,21 +10,57 @@ import { getUsedPriceOf } from "../price"
 import { handlePage, handlePush, handleSearch, handleSort } from "../utils"
 
 const { t } = locales.global
+
+const LS_CACHE_KEY = "milkonomy_enhanposest_cache"
+const LS_TS_KEY = "milkonomy_enhanposest_timestamp"
+
+function loadFromLocalStorage(marketTs: number): WorkflowCalculator[] | null {
+  try {
+    const cachedTs = localStorage.getItem(LS_TS_KEY)
+    if (cachedTs && Number(cachedTs) === marketTs) {
+      const raw = localStorage.getItem(LS_CACHE_KEY)
+      if (raw) return JSON.parse(raw)
+    }
+  } catch (e) {
+    console.error("读取 enhanposest localStorage 缓存失败", e)
+  }
+  return null
+}
+
+function saveToLocalStorage(list: WorkflowCalculator[], marketTs: number) {
+  try {
+    localStorage.setItem(LS_TS_KEY, String(marketTs))
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify(list))
+  } catch (e) {
+    console.error("保存 enhanposest localStorage 缓存失败", e)
+  }
+}
+
 /** 查 */
 export async function getEnhanposestDataApi(params: any) {
   let profitList: WorkflowCalculator[] = []
+  const marketTs = useGameStoreOutside().marketData?.timestamp ?? 0
+
   if (useGameStoreOutside().getJungleCache("enhanposest")) {
     profitList = useGameStoreOutside().getJungleCache("enhanposest")
   } else {
-    await new Promise(resolve => setTimeout(resolve, 300))
-    const startTime = Date.now()
-    try {
-      profitList = profitList.concat(calcEnhanceProfit())
-    } catch (e: any) {
-      console.error(e)
+    // 先尝试从 localStorage 恢复（Pinia 被 clearAllCaches 清掉后仍可恢复）
+    const cached = loadFromLocalStorage(marketTs)
+    if (cached) {
+      profitList = cached
+      useGameStoreOutside().setJungleCache(profitList, "enhanposest")
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      const startTime = Date.now()
+      try {
+        profitList = profitList.concat(calcEnhanceProfit())
+      } catch (e: any) {
+        console.error(e)
+      }
+      useGameStoreOutside().setJungleCache(profitList, "enhanposest")
+      saveToLocalStorage(profitList, marketTs)
+      ElMessage.success(t("计算完成，耗时{0}秒", [(Date.now() - startTime) / 1000]))
     }
-    useGameStoreOutside().setJungleCache(profitList, "enhanposest")
-    ElMessage.success(t("计算完成，耗时{0}秒", [(Date.now() - startTime) / 1000]))
   }
 
   profitList = profitList.filter(item => params.maxLevel ? (item.calculator as DecomposeCalculator).enhanceLevel <= params.maxLevel : true)

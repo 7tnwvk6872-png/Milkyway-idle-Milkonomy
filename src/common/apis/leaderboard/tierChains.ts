@@ -57,7 +57,7 @@ export const TIER_CHAINS: Record<string, TierChain[]> = {
       key: "wood",
       label: "木材",
       tiers: [
-        { itemLevel: 1, label: "木板" },
+        { itemLevel: 1, label: "原木" },
         { itemLevel: 10, label: "白桦", shopCost: 5000 },
         { itemLevel: 20, label: "雪松" },
         { itemLevel: 35, label: "紫心" },
