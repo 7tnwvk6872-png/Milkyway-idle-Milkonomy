@@ -203,6 +203,7 @@ const results = computed(() => {
     return []
   }
 
+  console.time('[超级强化] results')
   const result = []
   const ignoreTax = !!enhancerStore.advancedConfig.ignoreTax
   const sellTaxFactor = ignoreTax ? 1 : 0.98
@@ -308,6 +309,8 @@ const results = computed(() => {
       hourlyCostFormatted: Format.money(hourlyCost)
     })
   }
+  console.timeEnd('[超级强化] results')
+  console.log('[超级强化] 强化等级:', enhanceLevel, '起始Prot:', protectLevel, '行数:', result.length)
   return result
 })
 

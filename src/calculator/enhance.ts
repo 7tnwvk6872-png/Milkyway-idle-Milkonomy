@@ -425,6 +425,8 @@ export class EnhanceCalculator extends Calculator {
       return result
     }
 
+    console.log('[enhancelate] MISS 等级:' + this.enhanceLevel + ' Prot:' + this.protectLevel + ' 矩阵:' + (this.enhanceLevel - (this.escapeLevel + 1)))
+
     const targetLevel = this.enhanceLevel
     const successRateTable = getGameDataApi().enhancementLevelSuccessRateTable
 

@@ -923,6 +923,7 @@ const results = computed(() => {
     return []
   }
 
+  console.time('[强化分解] results')
   const result = []
   const ignoreTax = !!enhancerStore.config.ignoreTax
   const sellTaxFactor = ignoreTax ? 1 : 0.98
@@ -979,6 +980,8 @@ const results = computed(() => {
       profitRateFormatted: Format.percent(profitPP / totalCostNoHourly)
     })
   }
+  console.timeEnd('[强化分解] results')
+  console.log('[强化分解] 强化等级:', enhanceLevel, '行数:', result.length)
   return result
 })
 
