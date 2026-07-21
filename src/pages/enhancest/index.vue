@@ -205,7 +205,7 @@ const results = computed(() => {
     return []
   }
 
-  console.time('[超级强化] results #' + _resultsRunCount)
+  console.time('[超级强化] results')
   const result = []
   const ignoreTax = !!enhancerStore.advancedConfig.ignoreTax
   const sellTaxFactor = ignoreTax ? 1 : 0.98
@@ -312,7 +312,7 @@ const results = computed(() => {
     })
   }
   console.timeEnd('[超级强化] results')
-  console.log('[超级强化] 强化等级:', enhanceLevel, '起始Prot:', protectLevel, '行数:', result.length)
+  console.log('[超级强化] #' + _resultsRunCount, '强化等级:', enhanceLevel, '行数:', result.length)
   return result
 })
 
