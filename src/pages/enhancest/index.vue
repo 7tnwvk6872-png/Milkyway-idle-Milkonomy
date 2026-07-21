@@ -198,12 +198,14 @@ const currentDecomposePrice = computed(() => {
   return (pro - ing) * currentDecompose.value.successRate
 })
 
+let _resultsRunCount = 0
 const results = computed(() => {
+  _resultsRunCount++
   if (!currentItem.value.hrid) {
     return []
   }
 
-  console.time('[超级强化] results')
+  console.time('[超级强化] results #' + _resultsRunCount)
   const result = []
   const ignoreTax = !!enhancerStore.advancedConfig.ignoreTax
   const sellTaxFactor = ignoreTax ? 1 : 0.98

@@ -918,12 +918,14 @@ function onSelect(item: ItemDetail) {
   recalcManufacturePlan()
 }
 
+let _resultsRunCount = 0
 const results = computed(() => {
+  _resultsRunCount++
   if (!currentItem.value.hrid) {
     return []
   }
 
-  console.time('[强化分解] results')
+  console.time('[强化分解] results #' + _resultsRunCount)
   const result = []
   const ignoreTax = !!enhancerStore.config.ignoreTax
   const sellTaxFactor = ignoreTax ? 1 : 0.98
