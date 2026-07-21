@@ -63,8 +63,12 @@ export async function getEnhanposestDataApi(params: any) {
     }
   }
 
-  profitList = profitList.filter(item => params.maxLevel ? (item.calculator as DecomposeCalculator).enhanceLevel <= params.maxLevel : true)
-  profitList = profitList.filter(item => params.minLevel ? (item.calculator as DecomposeCalculator).enhanceLevel >= params.minLevel : true)
+  profitList = profitList.filter(item => {
+    const eh = (item.calculator as DecomposeCalculator)?.enhanceLevel
+    if (params.maxLevel && eh != null && eh > params.maxLevel) return false
+    if (params.minLevel && eh != null && eh < params.minLevel) return false
+    return true
+  })
 
   return handlePage(handleSort(handleSearch(profitList, params), params), params)
 }
