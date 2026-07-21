@@ -425,7 +425,6 @@ export class EnhanceCalculator extends Calculator {
       return result
     }
 
-    console.log('[enhancelate] MISS 等级:' + this.enhanceLevel + ' Prot:' + this.protectLevel + ' 矩阵:' + (this.enhanceLevel - (this.escapeLevel + 1)))
 
     const targetLevel = this.enhanceLevel
     const successRateTable = getGameDataApi().enhancementLevelSuccessRateTable
@@ -450,9 +449,7 @@ export class EnhanceCalculator extends Calculator {
     stMatrix = math.subset(stMatrix, math.index(math.range(offset, targetLevel), math.range(offset, targetLevel)))
 
     // 计算所有level到targetLevel的期望 = (I - P)^-1 * 1
-    const invStart = performance.now()
     const inv = math.inv(math.subtract(math.identity(size), stMatrix)) as math.Matrix
-    console.log('[enhancelate] 矩阵求逆 ' + size + 'x' + size + ' 耗时: ' + (performance.now() - invStart).toFixed(1) + 'ms')
     const all = math.multiply(inv, math.ones(size, 1)) as math.Matrix
 
     // console.log("inv", inv)
