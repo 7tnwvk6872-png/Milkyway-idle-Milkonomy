@@ -224,6 +224,36 @@ function onDeleteInDialog() {
 const menuVisible = ref(false)
 const top = ref(0)
 const left = ref(0)
+
+// 拖拽状态
+const dragIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+
+function onDragStart(index: number, e: DragEvent) {
+  dragIndex.value = index
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+  }
+}
+
+function onDragOver(index: number) {
+  if (dragIndex.value !== null && dragIndex.value !== index) {
+    dragOverIndex.value = index
+  }
+}
+
+function onDragLeave() {
+  dragOverIndex.value = null
+}
+
+function onDrop(index: number) {
+  if (dragIndex.value !== null && dragIndex.value !== index) {
+    playerStore.reorderPresets(dragIndex.value, index)
+  }
+  dragIndex.value = null
+  dragOverIndex.value = null
+}
 const menuPreset = ref<ActionConfig>()
 const menuIndex = ref(0)
 
@@ -1002,7 +1032,7 @@ function getAchievementEffect(type: AchievementTier) {
 
 <template>
   <ul v-show="menuVisible" class="contextmenu" :style="{ left: `${left}px`, top: `${top}px` }">
-    <li @click="onCopy" v-if="!playerStore.isOverflow()">
+    <li @click="onCopy">
       复制
     </li>
     <li v-if="playerStore.presets.length > 1" @click="onRemove">
@@ -1015,6 +1045,12 @@ function getAchievementEffect(type: AchievementTier) {
       <!-- 长按打开右键菜单 -->
       <el-button
         v-for="(preset, index) in playerStore.presets"
+         draggable="true"
+         :class="{ 'drag-over': dragOverIndex === index }"
+         @dragstart="onDragStart(index, $event)"
+         @dragover.prevent="onDragOver(index)"
+         @dragleave="onDragLeave"
+         @drop="onDrop(index)"
         class="ml-1 w-32px"
         :plain="playerStore.presetIndex !== index"
         color="#16ab1b"
@@ -1361,6 +1397,16 @@ function getAchievementEffect(type: AchievementTier) {
   }
 }
 
+.ml-1.w-32px {
+  cursor: grab;
+}
+.ml-1.w-32px:active {
+  cursor: grabbing;
+}
+.ml-1.w-32px.drag-over {
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(22, 171, 27, 0.5);
+}
 .contextmenu {
   margin: 0;
   z-index: 3000;

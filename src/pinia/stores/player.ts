@@ -41,6 +41,24 @@ export const usePlayerStore = defineStore("player", {
       }
       this.config = this.presets[this.presetIndex]
     },
+    reorderPresets(fromIndex: number, toIndex: number) {
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return
+      if (fromIndex >= this.presets.length || toIndex >= this.presets.length) return
+      const [moved] = this.presets.splice(fromIndex, 1)
+      this.presets.splice(toIndex, 0, moved)
+      // 更新当前预设索引
+      if (this.presetIndex === fromIndex) {
+        this.presetIndex = toIndex
+        setPresetIndex(toIndex)
+      } else if (fromIndex < this.presetIndex && toIndex >= this.presetIndex) {
+        this.presetIndex--
+        setPresetIndex(this.presetIndex)
+      } else if (fromIndex > this.presetIndex && toIndex <= this.presetIndex) {
+        this.presetIndex++
+        setPresetIndex(this.presetIndex)
+      }
+      this.commit()
+    },
     setPresetIndex(index: number) {
       this.presetIndex = index
       setPresetIndex(index)

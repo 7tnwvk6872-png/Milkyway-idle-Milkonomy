@@ -85,7 +85,7 @@ export const publicRoutes: RouteRecordRaw[] = [
         component: () => import("@/pages/jungle/index.vue"),
         name: "Jungle",
         meta: {
-          title: t("强化工具"),
+          title: t("打野工具"),
           affix: false,
           elIcon: "Compass"
         }
