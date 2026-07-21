@@ -333,6 +333,7 @@ export function setEnhancelateCache(params: EnhancelateCacheParams, result: Enha
   enhancelateCache[`${params.originLevel}-${params.enhanceLevel}-${params.protectLevel}-${params.itemLevel}-${params.escapeLevel}`] = result
 }
 export function clearEnhancelateCache() {
+  console.log("[Cache] clearEnhancelateCache called, was", Object.keys(enhancelateCache).length, "entries")
   enhancelateCache = {}
 }
 // #region 游戏内代码
