@@ -10,48 +10,84 @@ import { getUsedPriceOf } from "../price"
 import { handlePage, handlePush, handleSearch, handleSort } from "../utils"
 
 const { t } = locales.global
-/** 查 */
 export async function getEnhanposerDataApi(params: any) {
   let profitList: WorkflowCalculator[] = []
-  if (useGameStoreOutside().getEnhanposerCache()) {
-    profitList = useGameStoreOutside().getEnhanposerCache()
+
+  const cached = useGameStoreOutside().getEnhanposerCache()
+  if (cached && cached.length > 0) {
+    profitList = cached
   } else {
-    await new Promise(resolve => setTimeout(resolve, 300))
-    const startTime = Date.now()
-    try {
-      profitList = profitList.concat(calcEnhanceProfit())
-    } catch (e: any) {
-      console.error(e)
+    const marketTs = useGameStoreOutside().marketData?.timestamp
+    let restored = false
+    if (marketTs) {
+      try {
+        const tsKey = "mk_enhanposer_ts"
+        const cacheKey = "mk_enhanposer_data"
+        const cachedTs = localStorage.getItem(tsKey)
+        const raw = localStorage.getItem(cacheKey)
+        if (cachedTs && Number(cachedTs) === marketTs && raw) {
+          profitList = JSON.parse(raw)
+          if (Array.isArray(profitList) && profitList.length > 0) {
+            useGameStoreOutside().setEnhanposerCache(profitList)
+            restored = true
+          }
+        }
+      } catch (e) {}
     }
-    useGameStoreOutside().setEnhanposerCache(profitList)
-    ElMessage.success(t("计算完成，耗时{0}秒", [(Date.now() - startTime) / 1000]))
+    if (!restored) {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      const startTime = Date.now()
+      try {
+        profitList = profitList.concat(calcEnhanceProfit())
+      } catch (e: any) {
+        console.error(e)
+      }
+      useGameStoreOutside().setEnhanposerCache(profitList)
+      if (marketTs && profitList.length > 0) {
+        try {
+          localStorage.setItem("mk_enhanposer_ts", String(marketTs))
+          localStorage.setItem("mk_enhanposer_data", JSON.stringify(profitList))
+        } catch (e) {}
+      }
+      ElMessage.success(t("计算完成，耗时{0}秒", [(Date.now() - startTime) / 1000]))
+    }
   }
 
-  console.log("params", params)
-  profitList = profitList.filter(item => params.maxLevel ? (item.calculator as DecomposeCalculator).enhanceLevel <= params.maxLevel : true)
-  profitList = profitList.filter(item => params.minLevel ? (item.calculator as DecomposeCalculator).enhanceLevel >= params.minLevel : true)
+  profitList = profitList.filter(item => {
+    const eh = (item.calculator as DecomposeCalculator)?.enhanceLevel
+    if (params.maxLevel && eh != null && eh > params.maxLevel) return false
+    if (params.minLevel && eh != null && eh < params.minLevel) return false
+    return true
+  })
 
   return handlePage(handleSort(handleSearch(profitList, params), params), params)
 }
 
 function calcEnhanceProfit() {
   const gameData = getGameDataApi()
-  // 所有物品列表
   const list = Object.values(gameData.itemDetailMap)
   const profitList: WorkflowCalculator[] = []
-  list.filter(item => item.enhancementCosts).forEach((item) => {
-    if (getUsedPriceOf(item.hrid, 0, "ask") === -1) {
+
+  list.filter(function(item: any) { return item.enhancementCosts }).forEach(function(item: any) {
+    // 找第一个有卖价的等级作为买入等级
+    let baseLevel = 0
+    for (let lv = 1; lv <= 5; lv++) {
+      if (getUsedPriceOf(item.hrid, lv, "ask") !== -1) { baseLevel = lv; break }
+    }
+    if (baseLevel === 0 && getUsedPriceOf(item.hrid, 0, "ask") === -1) {
       return
     }
-    for (let enhanceLevel = 1; enhanceLevel <= 20; enhanceLevel++) {
-      if (getUsedPriceOf(item.hrid, 0, "ask") === -1) {
+
+    // 从 baseLevel+1 开始：买入Lv5只能强化到Lv6+
+    for (let enhanceLevel = baseLevel + 1; enhanceLevel <= 20; enhanceLevel++) {
+      if (getUsedPriceOf(item.hrid, baseLevel, "ask") === -1) {
         continue
       }
 
       let bestProfit = -Infinity
       let bestCal: WorkflowCalculator | undefined
       for (let protectLevel = (enhanceLevel > 2 ? 2 : enhanceLevel); protectLevel <= enhanceLevel; protectLevel++) {
-        const enhancer = new EnhanceCalculator({ enhanceLevel, protectLevel, hrid: item.hrid })
+        const enhancer = new EnhanceCalculator({ enhanceLevel, protectLevel, originLevel: baseLevel, hrid: item.hrid })
         for (let catalystRank = 0; catalystRank <= 2; catalystRank++) {
           if (!useGameStoreOutside().checkSecret() && item.itemLevel > 1) {
             continue
@@ -62,16 +98,14 @@ function calcEnhanceProfit() {
             continue
           }
 
-          // 预筛选，把不可能盈利的去掉
           if (!enhancer.profitable) {
             continue
           }
 
-          // protectLevel = enhanceLevel 时表示不用垫子
           const c = new WorkflowCalculator([
             getStorageCalculatorItem(enhancer),
             getStorageCalculatorItem(decomposer)
-          ], `${getTrans("强化分解")}+${enhanceLevel}`)
+          ], getTrans("强化分解") + "+" + enhanceLevel)
 
           c.run()
 
@@ -84,5 +118,6 @@ function calcEnhanceProfit() {
       bestCal && handlePush(profitList, bestCal)
     }
   })
+
   return profitList
 }

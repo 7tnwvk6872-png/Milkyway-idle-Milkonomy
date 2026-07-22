@@ -11,29 +11,30 @@ import { handlePage, handlePush, handleSearch, handleSort } from "../utils"
 
 const { t } = locales.global
 
-const LS_CACHE_KEY = "milkonomy_enhanposest_cache"
-const LS_TS_KEY = "milkonomy_enhanposest_timestamp"
+const LS_KEY = "mk_enhposest_v2"
 
-function loadFromLocalStorage(marketTs: number): WorkflowCalculator[] | null {
+function loadCache(marketTs: number): WorkflowCalculator[] | null {
   try {
-    const cachedTs = localStorage.getItem(LS_TS_KEY)
-    if (cachedTs && Number(cachedTs) === marketTs) {
-      const raw = localStorage.getItem(LS_CACHE_KEY)
-      if (raw) return JSON.parse(raw)
-    }
-  } catch (e) {
-    console.error("读取 enhanposest localStorage 缓存失败", e)
-  }
-  return null
+    const raw = localStorage.getItem(LS_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw)
+    if (!p || !Array.isArray(p.list) || p.ts !== marketTs) return null
+    console.log("[SUPER] 缓存命中 " + p.list.length + " 条, age=" + ((Date.now() - p.savedAt)/60000).toFixed(0) + "m")
+    return p.list
+  } catch (e) { return null }
 }
 
-function saveToLocalStorage(list: WorkflowCalculator[], marketTs: number) {
+function _loadAnyCache(): WorkflowCalculator[] | null {
   try {
-    localStorage.setItem(LS_TS_KEY, String(marketTs))
-    localStorage.setItem(LS_CACHE_KEY, JSON.stringify(list))
-  } catch (e) {
-    console.error("保存 enhanposest localStorage 缓存失败", e)
-  }
+    const raw = localStorage.getItem(LS_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw)
+    return Array.isArray(p.list) ? p.list : null
+  } catch (e) { return null }
+}
+
+function saveCache(list: WorkflowCalculator[], marketTs: number) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ ts: marketTs, savedAt: Date.now(), list })) } catch (e) {}
 }
 
 /** 查 */
@@ -41,25 +42,43 @@ export async function getEnhanposestDataApi(params: any) {
   let profitList: WorkflowCalculator[] = []
   const marketTs = useGameStoreOutside().marketData?.timestamp ?? 0
 
-  if (useGameStoreOutside().getJungleCache("enhanposest")) {
-    profitList = useGameStoreOutside().getJungleCache("enhanposest")
+  // 1. localStorage 优先
+  const cached = loadCache(marketTs)
+  if (cached) {
+    profitList = cached
+    useGameStoreOutside().setJungleCache(profitList, "enhanposest")
   } else {
-    // 先尝试从 localStorage 恢复（Pinia 被 clearAllCaches 清掉后仍可恢复）
-    const cached = loadFromLocalStorage(marketTs)
-    if (cached) {
-      profitList = cached
-      useGameStoreOutside().setJungleCache(profitList, "enhanposest")
+    // 2. Pinia 内存缓存
+    const mem = useGameStoreOutside().getJungleCache("enhanposest")
+    if (mem && mem.length > 0) {
+      profitList = mem
     } else {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      const startTime = Date.now()
-      try {
-        profitList = profitList.concat(calcEnhanceProfit())
-      } catch (e: any) {
-        console.error(e)
+      // 3. 市场变了, 先用旧数据显示（价格不准但结构可用）, 后台算新数据
+      const oldCache = _loadAnyCache()
+      if (oldCache && oldCache.length > 0) {
+        console.log("[SUPER] 先用旧缓存 " + oldCache.length + " 条, 后台更新中...")
+        profitList = oldCache
+        useGameStoreOutside().setJungleCache(profitList, "enhanposest")
+        // 异步重算
+        setTimeout(function() {
+          var newList: WorkflowCalculator[] = []
+          try { newList = calcEnhanceProfit() } catch(e) { console.error(e) }
+          if (newList.length > 0) {
+            useGameStoreOutside().setJungleCache(newList, "enhanposest")
+            saveCache(newList, marketTs)
+            console.log("[SUPER] 后台更新完成 " + newList.length + " 条")
+          }
+        }, 500)
+      } else {
+        // 无缓存, 必须同步算
+        console.log("[SUPER] 首次计算...")
+        await new Promise(resolve => setTimeout(resolve, 300))
+        const startTime = Date.now()
+        try { profitList = profitList.concat(calcEnhanceProfit()) } catch (e: any) { console.error(e) }
+        console.log("[SUPER] 计算完成 " + profitList.length + " 条, " + ((Date.now()-startTime)/1000).toFixed(1) + "s")
+        useGameStoreOutside().setJungleCache(profitList, "enhanposest")
+        saveCache(profitList, marketTs)
       }
-      useGameStoreOutside().setJungleCache(profitList, "enhanposest")
-      saveToLocalStorage(profitList, marketTs)
-      ElMessage.success(t("计算完成，耗时{0}秒", [(Date.now() - startTime) / 1000]))
     }
   }
 
@@ -75,44 +94,40 @@ export async function getEnhanposestDataApi(params: any) {
 
 function calcEnhanceProfit() {
   const gameData = getGameDataApi()
-  // 所有物品列表
   const list = Object.values(gameData.itemDetailMap)
   const profitList: WorkflowCalculator[] = []
   const escapeLevels = [-1, 0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
   const originLevels = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
   const targetLevels = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-  // const targetLevels = [15]
 
-  // const escapeLevels = Array.from({ length: 20 }, (_, i) => i)
-  // const originLevels = Array.from({ length: 20 }, (_, i) => i)
-  // const targetLevels = Array.from({ length: 20 }, (_, i) => i)
+  var itemsWithCosts = 0, pushedTotal = 0
 
-  list.filter(item => item.enhancementCosts).forEach((item) => {
-    for (const enhanceLevel of targetLevels.reverse()) {
-      let bestProfit = -Infinity
-      let bestCal: WorkflowCalculator | undefined
+  list.filter(function(item: any) { return item.enhancementCosts }).forEach(function(item: any) {
+    itemsWithCosts++
+    for (var _ti = targetLevels.length - 1; _ti >= 0; _ti--) {
+      var enhanceLevel = targetLevels[_ti]
+      var bestProfit = -Infinity
+      var bestCal: WorkflowCalculator | undefined
 
-      for (const originLevel of originLevels) {
-        if (getUsedPriceOf(item.hrid, originLevel, "ask") === -1) {
-          continue
-        }
-        for (const escapeLevel of escapeLevels) {
-          if (originLevel >= enhanceLevel || escapeLevel >= originLevel) {
-            continue
-          }
-          for (let protectLevel = (enhanceLevel > 2 ? 2 : enhanceLevel); protectLevel <= enhanceLevel; protectLevel++) {
-            const enhancer = new EnhanceCalculator({ enhanceLevel, escapeLevel, originLevel, protectLevel, hrid: item.hrid })
-            // 预筛选，把不可能盈利的去掉
-            if (!enhancer.available || !enhancer.profitable) {
-              continue
-            }
+      for (var oi = 0; oi < originLevels.length; oi++) {
+        var originLevel = originLevels[oi]
+        if (getUsedPriceOf(item.hrid, originLevel, "ask") === -1) continue
 
-            for (let catalystRank = 0; catalystRank <= 2; catalystRank++) {
-              // protectLevel = enhanceLevel 时表示不用垫子
-              const c = new WorkflowCalculator([
+        for (var ei = 0; ei < escapeLevels.length; ei++) {
+          var escapeLevel = escapeLevels[ei]
+          if (originLevel >= enhanceLevel || escapeLevel >= originLevel) continue
+
+          // 缓存 protectLevel 循环内的 enhancer（仅 depend on enhanceLevel+protectLevel，不依赖 catalyst）
+          for (var protectLevel = (enhanceLevel > 2 ? 2 : enhanceLevel); protectLevel <= enhanceLevel; protectLevel++) {
+            var enhancer = new EnhanceCalculator({ enhanceLevel: enhanceLevel, escapeLevel: escapeLevel, originLevel: originLevel, protectLevel: protectLevel, hrid: item.hrid })
+            if (!enhancer.available || !enhancer.profitable) continue
+
+            // 同一个 enhancer 复用于 3 种 catalyst
+            for (var catalystRank = 0; catalystRank <= 2; catalystRank++) {
+              var c = new WorkflowCalculator([
                 getStorageCalculatorItem(enhancer),
-                getStorageCalculatorItem(new DecomposeCalculator({ enhanceLevel, hrid: item.hrid, catalystRank }))
-              ], `+${originLevel} ${getTrans("→")} +${enhanceLevel}`)
+                getStorageCalculatorItem(new DecomposeCalculator({ enhanceLevel: enhanceLevel, hrid: item.hrid, catalystRank: catalystRank }))
+              ], "+" + originLevel + " " + getTrans("→") + " +" + enhanceLevel)
 
               c.run()
 
@@ -125,8 +140,10 @@ function calcEnhanceProfit() {
         }
       }
 
-      bestCal && handlePush(profitList, bestCal)
+      if (bestCal) { handlePush(profitList, bestCal); pushedTotal++ }
     }
   })
+
+  console.log("[SUPER] 物品:" + itemsWithCosts + " 推送:" + pushedTotal + " 最终:" + profitList.length)
   return profitList
 }

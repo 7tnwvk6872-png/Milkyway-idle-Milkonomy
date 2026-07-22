@@ -386,25 +386,25 @@ export class EnhanceCalculator extends Calculator {
     if (this._maxProfitApproximate !== undefined) {
       return this._maxProfitApproximate
     }
-    const decomposeCal = new DecomposeCalculator({
-      hrid: this.item.hrid,
-      /** 催化剂 1普通 2主要催化剂 */
-      catalystRank: 2,
-      enhanceLevel: this.enhanceLevel
-    })
-    if (!decomposeCal.available) {
-      this._maxProfitApproximate = -1
-      return this._maxProfitApproximate
+    // 遍历全部催化剂 (0=基础 1=普通 2=主要)，任一种能盈利即通过预筛选
+    let best = -1
+    for (let rank = 2; rank >= 0; rank--) {
+      const d = new DecomposeCalculator({
+        hrid: this.item.hrid,
+        catalystRank: rank,
+        enhanceLevel: this.enhanceLevel
+      })
+      if (!d.available) continue
+
+      const { actions } = this.enhancelate()
+      const cost = this.ingredientListWithPrice.reduce((acc, item) => acc + item.price * item.count * actions, 0)
+      const income = this.productListWithPrice.slice(1).reduce((acc, item) => acc + item.price * item.count * actions * (item.rate || 1), 0)
+      const decIncome = d.successRate * d.productListWithPrice.reduce((acc, item) => acc + item.price * item.count * (item.rate || 1), 0)
+      const decCost = d.ingredientListWithPrice.slice(1).reduce((acc, item) => acc + item.price * item.count, 0)
+      const v = (decIncome * (this._targetRate || 1) + income) * 0.98 - cost - decCost * (this._targetRate || 1)
+      if (v > best) best = v
     }
-    const { actions } = this.enhancelate()
-
-    // 以完整消耗一个初始装备为单位计算利润
-    const cost = this.ingredientListWithPrice.reduce((acc, item) => acc + item.price * item.count * actions, 0)
-    const income = this.productListWithPrice.slice(1).reduce((acc, item) => acc + item.price * item.count * actions * (item.rate || 1), 0)
-
-    const decomposeIncome = decomposeCal.successRate * decomposeCal.productListWithPrice.reduce((acc, item) => acc + item.price * item.count * (item.rate || 1), 0)
-    const decomposeCost = decomposeCal.ingredientListWithPrice.slice(1).reduce((acc, item) => acc + item.price * item.count, 0)
-    this._maxProfitApproximate = (decomposeIncome * (this._targetRate || 1) + income) * 0.98 - cost - decomposeCost * (this._targetRate || 1)
+    this._maxProfitApproximate = best
     return this._maxProfitApproximate
   }
 
